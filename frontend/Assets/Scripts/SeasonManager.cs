@@ -1,20 +1,15 @@
-// Assets/Scripts/SeasonManager.cs
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 public class SeasonManager : MonoBehaviour
 {
     public static SeasonManager Instance { get; private set; }
 
-    public int CurrentWeek { get; private set; } = 1;
-    public int TotalWeeks { get; private set; } = 10;
-    public List<TeamData> Teams { get; private set; }
-    public TeamData PlayerTeam { get; private set; }
-    public List<string> XpHistory { get; private set; } = new List<string>();
-
-    public int PlayerXP => PlayerTeam?.XP ?? 0;
-    public int PlayerRank => Teams.OrderByDescending(t => t.Wins).ThenByDescending(t => t.Points).ToList().FindIndex(t => t.IsPlayerTeam) + 1;
+    private SeasonSaveData seasonData;
+    private ApiClient apiClient;
+    private ProgressionUIController uiController;
 
     void Awake()
     {
@@ -25,65 +20,81 @@ public class SeasonManager : MonoBehaviour
         else
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject); // Persist across scenes if needed
-            InitializeSeason();
+            DontDestroyOnLoad(gameObject);
         }
     }
 
-    void InitializeSeason()
+    void Start()
     {
-        CurrentWeek = 1;
-        Teams = new List<TeamData>
+        apiClient = gameObject.AddComponent<ApiClient>();
+        uiController = FindObjectOfType<ProgressionUIController>();
+
+        StartCoroutine(apiClient.PostCreateSeason(data =>
         {
-            // Preloaded dummy data
-            new TeamData { Name = "Jets", Wins = 0, Losses = 0, Points = 0, XP = 0 },
-            new TeamData { Name = "Hawks", Wins = 0, Losses = 0, Points = 0, XP = 0 },
-            new TeamData { Name = "Sharks", Wins = 0, Losses = 0, Points = 0, XP = 0 },
-            new TeamData { Name = "Bears", Wins = 0, Losses = 0, Points = 0, XP = 0 },
-            new TeamData { Name = "Lions", Wins = 0, Losses = 0, Points = 0, XP = 0 },
-            new TeamData { Name = "Giants", Wins = 0, Losses = 0, Points = 0, XP = 0 },
-            new TeamData { Name = "Eagles", Wins = 0, Losses = 0, Points = 0, XP = 0 },
-            new TeamData { Name = "YOU", Wins = 0, Losses = 0, Points = 0, XP = 0, IsPlayerTeam = true }
-        };
-        PlayerTeam = Teams.First(t => t.IsPlayerTeam);
+            seasonData = data;
+            Debug.Log("Season created from API.");
+
+            // Notify UI that data is ready
+            uiController?.OnSeasonDataReady();
+        }));
     }
 
-    public (bool didPlayerWin, int xpGained, string opponentName) SimulateNextWeek()
+    public int CurrentWeek => seasonData?.currentWeek ?? 0;
+    public int TotalWeeks => seasonData?.totalWeeks ?? 0;
+
+    public List<TeamSaveData> Teams => seasonData?.teams ?? new List<TeamSaveData>();
+    public TeamSaveData PlayerTeam => seasonData?.teams?.FirstOrDefault(t => t.is_player_team);
+
+    public void SimulateNextWeek(Action<SeasonSaveData> callback)
     {
-        if (CurrentWeek > TotalWeeks) return (false, 0, "None");
-
-        // Simple simulation logic
-        TeamData opponent = Teams.Where(t => !t.IsPlayerTeam).OrderBy(t => Random.value).First();
-        bool playerWins = Random.value > 0.45; // 55% chance to win
-        int xpGained = 0;
-
-        if (playerWins)
+        if (seasonData == null)
         {
-            PlayerTeam.Wins++;
-            opponent.Losses++;
-            PlayerTeam.Points += Random.Range(20, 40);
-            xpGained = Random.Range(100, 150);
-            XpHistory.Add($"Week {CurrentWeek} Win: +{xpGained} XP");
-        }
-        else
-        {
-            PlayerTeam.Losses++;
-            opponent.Wins++;
-            PlayerTeam.Points += Random.Range(7, 18);
-            xpGained = Random.Range(40, 60);
-            XpHistory.Add($"Week {CurrentWeek} Loss: +{xpGained} XP");
-        }
-        PlayerTeam.XP += xpGained;
-
-        // Simulate other AI matches
-        foreach (var team in Teams.Where(t => !t.IsPlayerTeam && t != opponent))
-        {
-            if (Random.value > 0.5) team.Wins++; else team.Losses++;
-            team.Points += Random.Range(10, 35);
-            team.XP += Random.Range(50, 120);
+            Debug.LogError("Cannot simulate week: Season data not initialized");
+            return;
         }
 
-        CurrentWeek++;
-        return (playerWins, xpGained, opponent.Name);
+        StartCoroutine(apiClient.PostSimulateWeek(seasonData, data =>
+        {
+            seasonData = data;
+            callback?.Invoke(seasonData);
+        }));
+    }
+
+    public int PlayerXP => PlayerTeam?.progression?.total_xp ?? 0;
+
+    public int PlayerRank
+    {
+        get
+        {
+            if (Teams == null || Teams.Count == 0) return 0;
+
+            // Sort by points first, then wins (as backend uses points and wins for ranking)
+            var sorted = Teams.OrderByDescending(t => t.stats.points)
+                              .ThenByDescending(t => t.stats.wins)
+                              .ToList();
+
+            var playerIndex = sorted.FindIndex(t => t.is_player_team);
+            return playerIndex >= 0 ? playerIndex + 1 : 0;
+        }
+    }
+
+    public List<string> XpHistory
+    {
+        get
+        {
+            var player = PlayerTeam;
+            if (player?.progression?.xp_history == null) return new List<string>();
+
+            List<string> history = new List<string>();
+            foreach (var entry in player.progression.xp_history)
+            {
+                string week = entry.ContainsKey("week") ? entry["week"].ToString() : "?";
+                string result = entry.ContainsKey("event") ? entry["event"].ToString() : "Unknown";
+                string xp = entry.ContainsKey("xp_change") ? entry["xp_change"].ToString() : "0";
+
+                history.Add($"Week {week} {result.ToUpper()}: +{xp} XP");
+            }
+            return history;
+        }
     }
 }

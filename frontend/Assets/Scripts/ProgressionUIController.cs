@@ -1,4 +1,3 @@
-// Assets/Scripts/ProgressionUIController.cs
 using UnityEngine;
 using UnityEngine.UIElements;
 using System.Collections.Generic;
@@ -47,6 +46,10 @@ public class ProgressionUIController : MonoBehaviour
 
         // Initial UI state
         ShowScreen("Screen_Hub");
+    }
+
+    public void OnSeasonDataReady()
+    {
         UpdateAllUI();
     }
 
@@ -93,21 +96,25 @@ public class ProgressionUIController : MonoBehaviour
     private void RegisterCallbacks()
     {
         _simulateWeekButton.RegisterCallback<ClickEvent>(evt => OnSimulateWeek());
-        _continueToHubButton.RegisterCallback<ClickEvent>(evt => {
+        _continueToHubButton.RegisterCallback<ClickEvent>(evt =>
+        {
             ShowScreen("Screen_Hub");
             UpdateAllUI();
         });
 
         // Nav Bar
-        _navHubButton.RegisterCallback<ClickEvent>(evt => {
+        _navHubButton.RegisterCallback<ClickEvent>(evt =>
+        {
             ShowScreen("Screen_Hub");
             UpdateHubScreen();
         });
-        _navBracketButton.RegisterCallback<ClickEvent>(evt => {
+        _navBracketButton.RegisterCallback<ClickEvent>(evt =>
+        {
             ShowScreen("Screen_Bracket");
             UpdateBracketScreen();
         });
-        _navXpButton.RegisterCallback<ClickEvent>(evt => {
+        _navXpButton.RegisterCallback<ClickEvent>(evt =>
+        {
             ShowScreen("Screen_XP");
             UpdateXpScreen();
         });
@@ -115,19 +122,25 @@ public class ProgressionUIController : MonoBehaviour
 
     private void OnSimulateWeek()
     {
-        int weekBeforeSim = _seasonManager.CurrentWeek;
-        var result = _seasonManager.SimulateNextWeek();
+        _seasonManager.SimulateNextWeek(updatedData =>
+        {
+            // Update feedback screen with new state
+            var player = updatedData.teams.FirstOrDefault(t => t.is_player_team);
+            if (player == null || player.progression?.xp_history == null || player.progression.xp_history.Count == 0)
+                return;
 
-        // Update feedback screen
-        _simTitleLabel.text = $"🎮 MATCH SIMULATION RESULT - WEEK {weekBeforeSim}";
-        _simResultLabel.text = result.didPlayerWin ? "🏆 Result: WIN!" : "😢 Result: LOSS";
-        _simResultLabel.style.color = result.didPlayerWin ? new StyleColor(Color.green) : new StyleColor(Color.yellow);
-        _simOpponentLabel.text = $"🆚 Opponent: {result.opponentName}";
-        _simXpGainLabel.text = $"📈 XP Earned: +{result.xpGained} XP";
-        // In a full game, you'd check tier changes here.
-        _simRewardLabel.style.display = DisplayStyle.None; // Hide by default
+            var lastEntry = player.progression.xp_history.Last();
+            string result = lastEntry.ContainsKey("event") ? lastEntry["event"].ToString() : "Match";
+            string xp = lastEntry.ContainsKey("xp_change") ? lastEntry["xp_change"].ToString() : "0";
 
-        ShowScreen("Screen_SimFeedback");
+            _simTitleLabel.text = $"🎮 MATCH RESULT - WEEK {updatedData.currentWeek}";
+            _simResultLabel.text = $"🏆 Result: {result.ToUpper()}";
+            _simXpGainLabel.text = $"📈 XP Earned: +{xp}";
+            _simOpponentLabel.text = "🆚 Opponent: TBD"; // replace if API sends opponent info
+
+            ShowScreen("Screen_SimFeedback");
+            UpdateAllUI();
+        });
     }
 
     private void UpdateAllUI()
@@ -139,7 +152,13 @@ public class ProgressionUIController : MonoBehaviour
 
     private void UpdateHubScreen()
     {
-        int remaining = _seasonManager.TotalWeeks - _seasonManager.CurrentWeek + 1;
+        if (_seasonManager == null || _seasonManager.Teams == null)
+        {
+            Debug.LogWarning("SeasonManager not initialized yet.");
+            return;
+        }
+
+        int remaining = _seasonManager.TotalWeeks - _seasonManager.CurrentWeek ;
         _hubWeekLabel.text = $"📅 Week: {_seasonManager.CurrentWeek} / {_seasonManager.TotalWeeks}";
         _hubStandingLabel.text = $"🏆 Standing: {_seasonManager.PlayerRank}th Place";
         _hubMatchesLabel.text = $"🔁 Remaining Matches: {remaining}";
@@ -152,25 +171,26 @@ public class ProgressionUIController : MonoBehaviour
     private void UpdateBracketScreen()
     {
         _bracketWeekLabel.text = $"STANDINGS AFTER WEEK {_seasonManager.CurrentWeek - 1}";
+
         // Clear previous entries (except header)
         _bracketTable.Query(className: "table-row").ForEach(row => row.RemoveFromHierarchy());
 
-        var sortedTeams = _seasonManager.Teams.OrderByDescending(t => t.Wins).ThenByDescending(t => t.Points).ToList();
+        var sortedTeams = _seasonManager.Teams
+            .OrderByDescending(t => t.stats.points)
+            .ThenByDescending(t => t.stats.wins)
+            .ToList();
+
         for (int i = 0; i < sortedTeams.Count; i++)
         {
             var team = sortedTeams[i];
             var row = new VisualElement();
             row.AddToClassList("table-row");
-            if (team.IsPlayerTeam) row.AddToClassList("player-row");
+            if (team.is_player_team) row.AddToClassList("player-row");
 
-            var rankLabel = new Label((i + 1).ToString());
-            rankLabel.style.flexGrow = 1;
-            var nameLabel = new Label(team.Name);
-            nameLabel.style.flexGrow = 3;
-            var wlLabel = new Label($"{team.Wins}-{team.Losses}");
-            wlLabel.style.flexGrow = 2;
-            var xpLabel = new Label(team.XP.ToString());
-            xpLabel.style.flexGrow = 2;
+            var rankLabel = new Label((i + 1).ToString()) { style = { flexGrow = 1 } };
+            var nameLabel = new Label(team.team_name) { style = { flexGrow = 3 } };
+            var wlLabel = new Label($"{team.stats.wins}-{team.stats.losses}") { style = { flexGrow = 2 } };
+            var xpLabel = new Label(team.progression.total_xp.ToString()) { style = { flexGrow = 2 } };
 
             row.Add(rankLabel);
             row.Add(nameLabel);
@@ -178,13 +198,14 @@ public class ProgressionUIController : MonoBehaviour
             row.Add(xpLabel);
             _bracketTable.Add(row);
         }
-         _bracketInfoLabel.text = $"📍 You are currently ranked {_seasonManager.PlayerRank}th";
+
+        _bracketInfoLabel.text = $"📍 You are currently ranked {_seasonManager.PlayerRank}th";
     }
 
     private void UpdateXpScreen()
     {
-         float xpProgress = (float)_seasonManager.PlayerXP / 1000f;
-        _xpCurrentLabel.text = $"Current XP: {_seasonManager.PlayerXP} / 1000 (Bronze Tier)";
+        float xpProgress = (float)_seasonManager.PlayerXP / 1000f;
+        _xpCurrentLabel.text = $"Current XP: {_seasonManager.PlayerXP} / 1000 ({PlayerTier()})";
         _xpScreenBarFill.style.width = Length.Percent(xpProgress * 100);
 
         // Update XP History
@@ -195,6 +216,12 @@ public class ProgressionUIController : MonoBehaviour
             label.AddToClassList("xp-history-entry");
             _xpHistoryScrollView.Add(label);
         }
+    }
+
+    private string PlayerTier()
+    {
+        var player = _seasonManager.PlayerTeam;
+        return player?.progression?.tier ?? "Rookie";
     }
 
     private void ShowScreen(string screenName)
