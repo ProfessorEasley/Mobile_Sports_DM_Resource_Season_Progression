@@ -3,80 +3,97 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using System.Text.Json;
-
-// Namespace wrapper
+using System.Collections.Concurrent;
+using System.IO;
 using FMGSeasonProgression;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-// Store all active seasons in memory
-var activeSeasons = new Dictionary<string, SeasonController>();
+var active_seasons = new ConcurrentDictionary<string, SeasonController>();
+var player_progressions = new ConcurrentDictionary<string, PlayerProgression>();
 
-// ---- POST /seasons ----
-app.MapPost("/seasons", (FMGSeasonProgression.CreateSeasonRequest request) =>
+Directory.CreateDirectory("data/seasons");
+Directory.CreateDirectory("data/progression");
+
+var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+
+app.MapPost("/seasons", (CreateSeasonRequest request) =>
 {
-    try
+    if (request.teams == null || request.teams.Count == 0)
+        return Results.BadRequest("No teams provided.");
+
+    string season_id = Guid.NewGuid().ToString();
+    var teams = new List<TeamData>();
+
+    foreach (var d in request.teams)
     {
-        if (request.Teams == null || request.Teams.Count == 0)
-            return Results.BadRequest("No teams provided.");
+        string name = d.ContainsKey("team_name") ? d["team_name"].ToString() ?? "Unnamed" : "Unnamed";
+        string player_id = d.ContainsKey("player_id") ? d["player_id"].ToString() ?? Guid.NewGuid().ToString() : Guid.NewGuid().ToString();
+        int rating = 1000;
+        if (d.ContainsKey("rating") && int.TryParse(d["rating"].ToString(), out int parsed))
+            rating = parsed;
 
-        string id = $"S_{Guid.NewGuid().ToString()[..8]}";
-        var teams = new List<FMGSeasonProgression.TeamData>();
-
-        foreach (var d in request.Teams)
+        teams.Add(new TeamData
         {
-            try
-            {
-                string name = d.ContainsKey("name") ? d["name"].ToString() ?? "Unnamed" : "Unnamed";
-                int rating = 1000;
-                if (d.ContainsKey("rating") && int.TryParse(d["rating"].ToString(), out int parsed))
-                    rating = parsed;
+            team_id = Guid.NewGuid().ToString(),
+            player_id = player_id,
+            team_name = name,
+            rating = rating,
+            is_player_team = name == request.player_team_name
+        });
 
-                teams.Add(new FMGSeasonProgression.TeamData
-                {
-                    TeamId = $"T_{Guid.NewGuid().ToString()[..6]}",
-                    TeamName = name,
-                    Rating = rating,
-                    IsPlayerTeam = name == request.PlayerTeamName
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error parsing team: {ex.Message}");
-            }
-        }
-
-        var state = new FMGSeasonProgression.SeasonState { SeasonId = id, Teams = teams };
-        var ctrl = new FMGSeasonProgression.SeasonController(state);
-        activeSeasons[id] = ctrl;
-
-        FMGSeasonProgression.LogHelper.LogEvent("SeasonStart", new { season_id = id, team_count = teams.Count });
-        return Results.Json(ctrl.State);
+        player_progressions[player_id] = new PlayerProgression
+        {
+            player_id = player_id,
+            current_xp = 0,
+            current_tier = "rookie"
+        };
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error creating season: {ex}");
-        return Results.Problem($"Server error: {ex.Message}");
-    }
+
+    var state = new SeasonState { season_id = season_id, teams = teams };
+    var ctrl = new SeasonController(state, player_progressions);
+    active_seasons[season_id] = ctrl;
+
+    LogHelper.LogEvent("SeasonStart", new { timestamp = DateTime.UtcNow.ToString("o"), season_id = season_id, team_count = teams.Count });
+
+    var json = JsonSerializer.Serialize(ctrl.state, jsonOptions);
+    File.WriteAllText($"data/seasons/{season_id}.json", json);
+    Console.WriteLine($"Saved file to: {Path.GetFullPath($"data/seasons/{season_id}.json")}");
+
+    return Results.Json(ctrl.state);
 });
 
-// ---- POST /seasons/{id}/simulate_week ----
 app.MapPost("/seasons/{id}/simulate_week", (string id) =>
 {
-    if (!activeSeasons.TryGetValue(id, out var ctrl))
+    if (!active_seasons.TryGetValue(id, out var ctrl))
         return Results.NotFound($"Season {id} not found.");
 
     ctrl.SimulateWeek();
-    return Results.Json(ctrl.State);
+
+    var json = JsonSerializer.Serialize(ctrl.state, jsonOptions);
+    File.WriteAllText($"data/seasons/{id}_week_{ctrl.state.week}.json", json);
+
+
+    return Results.Json(ctrl.state);
 });
 
-// ---- GET /seasons/{id} ----
 app.MapGet("/seasons/{id}", (string id) =>
 {
-    if (!activeSeasons.TryGetValue(id, out var ctrl))
+    if (!active_seasons.TryGetValue(id, out var ctrl))
         return Results.NotFound($"Season {id} not found.");
-    return Results.Json(ctrl.State);
+    return Results.Json(ctrl.state);
+});
+
+app.MapGet("/progression/{player_id}", (string player_id) =>
+{
+    if (!player_progressions.TryGetValue(player_id, out var progression))
+        return Results.NotFound($"Player {player_id} not found.");
+
+    var json = JsonSerializer.Serialize(progression, jsonOptions);
+    File.WriteAllText($"data/progression/{player_id}.json", json);
+
+    return Results.Json(progression);
 });
 
 app.Run();
@@ -85,82 +102,157 @@ namespace FMGSeasonProgression
 {
     public class TeamData
     {
-        public string TeamId { get; set; } = "";
-        public string TeamName { get; set; } = "";
-        public int Rating { get; set; }
-        public bool IsPlayerTeam { get; set; }
-        public int Wins { get; set; } = 0;
-        public int Losses { get; set; } = 0;
+        [JsonPropertyName("team_id")]
+        public string team_id { get; set; } = "";
+
+        [JsonPropertyName("player_id")]
+        public string player_id { get; set; } = "";
+
+        [JsonPropertyName("team_name")]
+        public string team_name { get; set; } = "";
+
+        [JsonPropertyName("rating")]
+        public int rating { get; set; }
+
+        [JsonPropertyName("is_player_team")]
+        public bool is_player_team { get; set; }
+
+        [JsonPropertyName("wins")]
+        public int wins { get; set; } = 0;
+
+        [JsonPropertyName("losses")]
+        public int losses { get; set; } = 0;
     }
 
     public class SeasonState
     {
-        public string SeasonId { get; set; } = "";
-        public List<TeamData> Teams { get; set; } = new();
-        public int Week { get; set; } = 0;
+        [JsonPropertyName("season_id")]
+        public string season_id { get; set; } = "";
+
+        [JsonPropertyName("teams")]
+        public List<TeamData> teams { get; set; } = new();
+
+        [JsonPropertyName("week")]
+        public int week { get; set; } = 0;
+    }
+
+    public class PlayerProgression
+    {
+        [JsonPropertyName("player_id")]
+        public string player_id { get; set; } = "";
+
+        [JsonPropertyName("current_xp")]
+        public int current_xp { get; set; } = 0;
+
+        [JsonPropertyName("current_tier")]
+        public string current_tier { get; set; } = "rookie";
+
+        [JsonPropertyName("xp_history")]
+        public List<XPHistoryEntry> xp_history { get; set; } = new();
+    }
+
+    public class XPHistoryEntry
+    {
+        [JsonPropertyName("timestamp")]
+        public string timestamp { get; set; } = DateTime.UtcNow.ToString("o");
+
+        [JsonPropertyName("xp_gained")]
+        public int xp_gained { get; set; }
+
+        [JsonPropertyName("source")]
+        public string source { get; set; } = "match_played";
+
+        [JsonPropertyName("facility_multiplier")]
+        public float facility_multiplier { get; set; } = 1.0f;
+
+        [JsonPropertyName("coaching_bonus")]
+        public float coaching_bonus { get; set; } = 1.0f;
     }
 
     public static class LogHelper
     {
-        public static void LogEvent(string eventName, object details)
+        public static void LogEvent(string event_name, object details)
         {
             var json = JsonSerializer.Serialize(details, new JsonSerializerOptions { WriteIndented = false });
-            Console.WriteLine($"[{DateTime.Now}] {eventName}: {json}");
+            Console.WriteLine($"[{DateTime.Now}] {event_name}: {json}");
         }
     }
 
     public class SeasonController
     {
-        public SeasonState State { get; private set; }
+        public SeasonState state { get; private set; }
+        private readonly ConcurrentDictionary<string, PlayerProgression> player_progressions;
+        private readonly Random rnd = new();
 
-        public SeasonController(SeasonState state)
+        public SeasonController(SeasonState state, ConcurrentDictionary<string, PlayerProgression> progressions)
         {
-            State = state;
+            this.state = state;
+            player_progressions = progressions;
         }
 
         public void SimulateWeek()
         {
-            var rnd = new Random();
-            var teams = State.Teams.OrderBy(t => rnd.Next()).ToList();
+            var teams = state.teams.OrderBy(t => rnd.Next()).ToList();
 
             for (int i = 0; i < teams.Count; i += 2)
             {
                 if (i + 1 >= teams.Count) break;
-                var teamA = teams[i];
-                var teamB = teams[i + 1];
+                var team_a = teams[i];
+                var team_b = teams[i + 1];
 
-                var aWinProb = 1.0 / (1.0 + Math.Pow(10, (teamB.Rating - teamA.Rating) / 400.0));
-                bool aWins = rnd.NextDouble() < aWinProb;
+                double a_win_prob = 1.0 / (1.0 + Math.Pow(10, (team_b.rating - team_a.rating) / 400.0));
+                bool a_wins = rnd.NextDouble() < a_win_prob;
 
-                if (aWins)
+                if (a_wins)
                 {
-                    teamA.Wins++;
-                    teamB.Losses++;
-                    teamA.Rating += 10;
-                    teamB.Rating -= 10;
+                    team_a.wins++;
+                    team_b.losses++;
+                    team_a.rating += 10;
+                    team_b.rating -= 10;
+                    UpdateXP(team_a.player_id, 50, "match_win");
+                    UpdateXP(team_b.player_id, 20, "match_loss");
                 }
                 else
                 {
-                    teamB.Wins++;
-                    teamA.Losses++;
-                    teamB.Rating += 10;
-                    teamA.Rating -= 10;
+                    team_b.wins++;
+                    team_a.losses++;
+                    team_b.rating += 10;
+                    team_a.rating -= 10;
+                    UpdateXP(team_b.player_id, 50, "match_win");
+                    UpdateXP(team_a.player_id, 20, "match_loss");
                 }
             }
 
-            State.Week++;
-            LogHelper.LogEvent("SimulateWeek", new { week = State.Week, teams = State.Teams.Count });
+            state.week++;
+            LogHelper.LogEvent("SimulateWeek", new { timestamp = DateTime.UtcNow.ToString("o"), week = state.week, teams = state.teams.Count });
+        }
+
+        private void UpdateXP(string player_id, int xp_gained, string source)
+        {
+            if (player_progressions.TryGetValue(player_id, out var progression))
+            {
+                progression.current_xp += xp_gained;
+                progression.xp_history.Add(new XPHistoryEntry
+                {
+                    timestamp = DateTime.UtcNow.ToString("o"),
+                    xp_gained = xp_gained,
+                    source = source,
+                    facility_multiplier = 1.0f,
+                    coaching_bonus = 1.0f
+                });
+
+                var json = JsonSerializer.Serialize(progression, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText($"data/progression/{player_id}.json", json);
+            }
         }
     }
 
     public class CreateSeasonRequest
     {
         [JsonPropertyName("teams")]
-        public List<Dictionary<string, object>> Teams { get; set; } = new();
+        public List<Dictionary<string, object>> teams { get; set; } = new();
 
-        [JsonPropertyName("playerTeamName")]
-        public string PlayerTeamName { get; set; } = "";
+        [JsonPropertyName("player_team_name")]
+        public string player_team_name { get; set; } = "";
     }
 }
-
-// Top-level program (after namespace)
