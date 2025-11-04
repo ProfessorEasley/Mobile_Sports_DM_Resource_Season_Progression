@@ -47,7 +47,38 @@ app.MapPost("/seasons", (CreateSeasonRequest request) =>
         {
             player_id = player_id,
             current_xp = 0,
-            current_tier = "rookie"
+            current_tier = "rookie",
+            tier_progression = new Dictionary<string, TierData>
+            {
+                ["rookie"] = new TierData
+                {
+                    min_xp = 0,
+                    max_xp = 50,
+                    display_name = "Rookie",
+                    unlock_features = new List<string> { "Basic Arena Access", "Starter Pack" }
+                },
+                ["pro"] = new TierData
+                {
+                    min_xp = 51,
+                    max_xp = 100,
+                    display_name = "Pro",
+                    unlock_features = new List<string> { "Elite Arena", "Pro Training Facility" }
+                },
+                ["all_star"] = new TierData
+                {
+                    min_xp = 101,
+                    max_xp = 150,
+                    display_name = "All-Star",
+                    unlock_features = new List<string> { "Star Arena", "Star Training Facility" }
+                },
+                ["legend"] = new TierData
+                {
+                    min_xp = 151,
+                    max_xp = 1000,
+                    display_name = "Legend",
+                    unlock_features = new List<string> { "Legendary Arena", "Hall of Fame Access" }
+                }
+            }
         };
     }
 
@@ -134,6 +165,9 @@ namespace FMGSeasonProgression
 
         [JsonPropertyName("week")]
         public int week { get; set; } = 0;
+        
+        [JsonPropertyName("player_progression")]
+        public List<PlayerProgression> player_progression { get; set; } = new();
     }
 
     public class PlayerProgression
@@ -147,8 +181,26 @@ namespace FMGSeasonProgression
         [JsonPropertyName("current_tier")]
         public string current_tier { get; set; } = "rookie";
 
+        [JsonPropertyName("tier_progression")]
+        public Dictionary<string, TierData> tier_progression { get; set; } = new();
+
         [JsonPropertyName("xp_history")]
         public List<XPHistoryEntry> xp_history { get; set; } = new();
+    }
+
+    public class TierData
+    {
+        [JsonPropertyName("min_xp")]
+        public int min_xp { get; set; }
+
+        [JsonPropertyName("max_xp")]
+        public int max_xp { get; set; }
+
+        [JsonPropertyName("display_name")]
+        public string display_name { get; set; } = "";
+
+        [JsonPropertyName("unlock_features")]
+        public List<string> unlock_features { get; set; } = new();
     }
 
     public class XPHistoryEntry
@@ -232,6 +284,19 @@ namespace FMGSeasonProgression
             if (player_progressions.TryGetValue(player_id, out var progression))
             {
                 progression.current_xp += xp_gained;
+
+                foreach (var kvp in progression.tier_progression)
+                {
+                    var tierName = kvp.Key;
+                    var tier = kvp.Value;
+
+                    if (progression.current_xp >= tier.min_xp && progression.current_xp <= tier.max_xp)
+                    {
+                        progression.current_tier = tierName;
+                        break;
+                    }
+                }
+
                 progression.xp_history.Add(new XPHistoryEntry
                 {
                     timestamp = DateTime.UtcNow.ToString("o"),
@@ -243,6 +308,13 @@ namespace FMGSeasonProgression
 
                 var json = JsonSerializer.Serialize(progression, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText($"data/progression/{player_id}.json", json);
+
+                LogHelper.LogEvent("TierUpdate", new
+                {
+                    player_id,
+                    new_tier = progression.current_tier,
+                    current_xp = progression.current_xp
+                });
             }
         }
     }

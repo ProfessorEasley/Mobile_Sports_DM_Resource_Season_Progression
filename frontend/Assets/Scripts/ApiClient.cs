@@ -14,35 +14,65 @@ public class TeamStatsSaveData
     public int points;
     public int total_matches;
 }
-
 [Serializable]
-public class TeamProgressionSaveData
+public class TierData
 {
-    public int total_xp;
-    public int current_level;
-    public string tier;
-    public List<Dictionary<string, object>> xp_history;
+    public int min_xp;
+    public int max_xp;
+    public string display_name;
+    public List<string> unlock_features;
+}
+
+// [Serializable]
+// public class TeamProgressionSaveData
+// {
+//     public int total_xp;
+//     public int current_level;
+//     public string tier;
+//     public List<Dictionary<string, object>> xp_history;
+// }
+[Serializable]
+public class PlayerProgressionSaveData
+{
+    public string player_id;
+    public int current_xp;
+    public string current_tier;
+    public Dictionary<string, TierData> tier_progression;
+    public List<XPHistoryEntry> xp_history;
 }
 
 [Serializable]
+public class XPHistoryEntry
+{
+    public string timestamp;
+    public int xp_gained;
+    public string source;
+    public float facility_multiplier;
+    public float coaching_bonus;
+}
+
+
 public class TeamSaveData
 {
     public string team_id;
+    public string player_id;
     public string team_name;
     public int rating;
     public bool is_player_team;
-    public int rank;
-    public TeamStatsSaveData stats;
-    public TeamProgressionSaveData progression;
+    public int wins;
+    public int losses;
+    public int rank
+
 }
+
 
 [Serializable]
 public class SeasonSaveData
 {
     public string season_id;
-    public int currentWeek;
-    public int totalWeeks;
+    public int week;
     public List<TeamSaveData> teams;
+    public List<PlayerProgressionSaveData> player_progression;
 }
 
 public class ApiClient : MonoBehaviour
@@ -61,8 +91,8 @@ public class ApiClient : MonoBehaviour
         foreach (string name in teamNames)
         {
             var teamJson = new JSONObject();
-            teamJson["name"] = name;
-            teamJson["rating"] = 0;
+            teamJson["team_name"] = name;
+            teamJson["rating"] = 1000
             teamsArray.Add(teamJson);
         }
 
@@ -130,8 +160,8 @@ public class ApiClient : MonoBehaviour
         SeasonSaveData data = new SeasonSaveData
         {
             season_id = json["season_id"],
-            currentWeek = json["current_week"].AsInt,
-            totalWeeks = json["total_weeks"].AsInt,
+            week = json["week"].AsInt,
+
             teams = new List<TeamSaveData>()
         };
 
@@ -140,6 +170,7 @@ public class ApiClient : MonoBehaviour
             TeamSaveData team = new TeamSaveData
             {
                 team_id = t["team_id"],
+                player_id = t["player_id"],
                 team_name = t["team_name"],
                 rating = t["rating"].AsInt,
                 is_player_team = t["is_player_team"].AsBool,
@@ -174,6 +205,52 @@ public class ApiClient : MonoBehaviour
 
             data.teams.Add(team);
         }
+        if (json["player_progression"] != null)
+        {
+            data.player_progression = new List<PlayerProgressionSaveData>();
+            foreach (JSONNode p in json["player_progression"].AsArray)
+            {
+                var prog = new PlayerProgressionSaveData
+                {
+                    player_id = p["player_id"],
+                    current_xp = p["current_xp"].AsInt,
+                    current_tier = p["current_tier"],
+                    tier_progression = new Dictionary<string, TierData>(),
+                    xp_history = new List<XPHistoryEntry>()
+                };
+
+                foreach (KeyValuePair<string, JSONNode> kv in p["tier_progression"].AsObject)
+                {
+                    var tierNode = kv.Value;
+                    prog.tier_progression[kv.Key] = new TierData
+                    {
+                        min_xp = tierNode["min_xp"].AsInt,
+                        max_xp = tierNode["max_xp"].AsInt,
+                        display_name = tierNode["display_name"],
+                        unlock_features = new List<string>()
+                    };
+                    foreach (JSONNode feat in tierNode["unlock_features"].AsArray)
+                        prog.tier_progression[kv.Key].unlock_features.Add(feat);
+                }
+
+                foreach (JSONNode entry in p["xp_history"].AsArray)
+                {
+                    XPHistoryEntry history = new XPHistoryEntry
+                    {
+                        timestamp = entry["timestamp"],
+                        xp_gained = entry["xp_gained"].AsInt,
+                        source = entry["source"],
+                        facility_multiplier = entry["facility_multiplier"].AsFloat,
+                        coaching_bonus = entry["coaching_bonus"].AsFloat
+                    };
+                    prog.xp_history.Add(history);
+                }
+
+                data.player_progression.Add(prog);
+            }
+        }
+
+
 
         return data;
     }
