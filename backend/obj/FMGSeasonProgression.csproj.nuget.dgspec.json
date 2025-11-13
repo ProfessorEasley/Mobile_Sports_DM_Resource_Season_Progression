@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\mihik\\OneDrive\\Documents\\FMGSeasonProgression\\FMGSeasonProgression.csproj": {}
+    "C:\\Users\\mihik\\OneDrive\\Desktop\\Mobile_Sports_DM_Resource_Season_Progression\\backend\\FMGSeasonProgression.csproj": {}
   },
   "projects": {
-    "C:\\Users\\mihik\\OneDrive\\Documents\\FMGSeasonProgression\\FMGSeasonProgression.csproj": {
+    "C:\\Users\\mihik\\OneDrive\\Desktop\\Mobile_Sports_DM_Resource_Season_Progression\\backend\\FMGSeasonProgression.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\mihik\\OneDrive\\Documents\\FMGSeasonProgression\\FMGSeasonProgression.csproj",
+        "projectUniqueName": "C:\\Users\\mihik\\OneDrive\\Desktop\\Mobile_Sports_DM_Resource_Season_Progression\\backend\\FMGSeasonProgression.csproj",
         "projectName": "FMGSeasonProgression",
-        "projectPath": "C:\\Users\\mihik\\OneDrive\\Documents\\FMGSeasonProgression\\FMGSeasonProgression.csproj",
+        "projectPath": "C:\\Users\\mihik\\OneDrive\\Desktop\\Mobile_Sports_DM_Resource_Season_Progression\\backend\\FMGSeasonProgression.csproj",
         "packagesPath": "C:\\Users\\mihik\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\mihik\\OneDrive\\Documents\\FMGSeasonProgression\\obj\\",
+        "outputPath": "C:\\Users\\mihik\\OneDrive\\Desktop\\Mobile_Sports_DM_Resource_Season_Progression\\backend\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\mihik\\AppData\\Roaming\\NuGet\\NuGet.Config"

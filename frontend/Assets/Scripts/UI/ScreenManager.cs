@@ -17,16 +17,16 @@ public class ScreenManager : MonoBehaviour
     public BracketUI bracketUI;
     public XPUI xpUI;
 
-    private SeasonManager seasonManager;
+    private SeasonDataManager seasonManager;
 
     void Awake()
     {
-        // Hook into the SeasonManager singleton
-        seasonManager = SeasonManager.Instance;
+        // Hook into the SeasonDataManager singleton
+        seasonManager = SeasonDataManager.Instance;
 
         if (seasonManager == null)
         {
-            Debug.LogError("ScreenManager: SeasonManager not found in scene!");
+            Debug.LogError("ScreenManager: SeasonDataManager not found in scene!");
             return;
         }
 
@@ -78,7 +78,7 @@ public class ScreenManager : MonoBehaviour
     public void UpdateAllScreens()
     {
         if (seasonManager == null)
-            seasonManager = SeasonManager.Instance;
+            seasonManager = SeasonDataManager.Instance;
 
         UpdateHubDisplay();
 
@@ -93,7 +93,7 @@ public class ScreenManager : MonoBehaviour
     {
         if (seasonManager == null)
         {
-            Debug.LogWarning("ScreenManager: SeasonManager not initialized yet.");
+            Debug.LogWarning("ScreenManager: SeasonDataManager not initialized yet.");
             return;
         }
 

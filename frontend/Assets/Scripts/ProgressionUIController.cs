@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 [RequireComponent(typeof(UIDocument))]
 public class ProgressionUIController : MonoBehaviour
@@ -125,16 +126,26 @@ public class ProgressionUIController : MonoBehaviour
         _seasonManager.SimulateNextWeek(updatedData =>
         {
             // Update feedback screen with new state
-            var player = updatedData.teams.FirstOrDefault(t => t.is_player_team);
-            if (player == null || player.progression?.xp_history == null || player.progression.xp_history.Count == 0)
+            var playerTeam = updatedData.teams.FirstOrDefault(t => t.is_player_team);
+            if (playerTeam == null) return;
+
+            var playerProg = updatedData.player_progression
+                .FirstOrDefault(p => p.player_id == playerTeam.team_id || p.player_id == playerTeam.player_id);
+
+            if (playerProg == null || playerProg.xp_history == null || playerProg.xp_history.Count == 0)
                 return;
 
-            var lastEntry = player.progression.xp_history.Last();
-            string result = lastEntry.ContainsKey("event") ? lastEntry["event"].ToString() : "Match";
-            string xp = lastEntry.ContainsKey("xp_change") ? lastEntry["xp_change"].ToString() : "0";
+            var lastEntry = playerProg.xp_history.Last();
 
-            _simTitleLabel.text = $"🎮 MATCH RESULT - WEEK {updatedData.currentWeek}";
-            _simResultLabel.text = $"🏆 Result: {result.ToUpper()}";
+            string source = string.IsNullOrEmpty(lastEntry.source) ? "unknown" : lastEntry.source;
+            string xp = lastEntry.xp_gained.ToString();
+            string facility = lastEntry.facility_multiplier.ToString("0.##");
+            string coaching = lastEntry.coaching_bonus.ToString("0.##");
+
+
+
+            _simTitleLabel.text = $"🎮 MATCH RESULT - WEEK {updatedData.current_week}";
+            _simResultLabel.text = $"🏆 Result: {source.ToUpper()}";
             _simXpGainLabel.text = $"📈 XP Earned: +{xp}";
             _simOpponentLabel.text = "🆚 Opponent: TBD"; // replace if API sends opponent info
 
@@ -158,8 +169,9 @@ public class ProgressionUIController : MonoBehaviour
             return;
         }
 
-        int remaining = _seasonManager.TotalWeeks - _seasonManager.CurrentWeek ;
-        _hubWeekLabel.text = $"📅 Week: {_seasonManager.CurrentWeek} / {_seasonManager.TotalWeeks}";
+        int remaining = _seasonManager.TotalWeeks - _seasonManager.CurrentWeek;
+        _hubWeekLabel.text = $"📅 Week: {_seasonManager.CurrentWeek}/{_seasonManager.TotalWeeks}";
+
         _hubStandingLabel.text = $"🏆 Standing: {_seasonManager.PlayerRank}th Place";
         _hubMatchesLabel.text = $"🔁 Remaining Matches: {remaining}";
 
@@ -180,7 +192,10 @@ public class ProgressionUIController : MonoBehaviour
             .ThenByDescending(t => t.stats.wins)
             .ToList();
 
-        for (int i = 0; i < sortedTeams.Count; i++)
+        
+        Debug.Log("Hello, World!");
+
+        for (int i = 0; i < sortedTeams.Count(); i++)
         {
             var team = sortedTeams[i];
             var row = new VisualElement();
@@ -190,12 +205,12 @@ public class ProgressionUIController : MonoBehaviour
             var rankLabel = new Label((i + 1).ToString()) { style = { flexGrow = 1 } };
             var nameLabel = new Label(team.team_name) { style = { flexGrow = 3 } };
             var wlLabel = new Label($"{team.stats.wins}-{team.stats.losses}") { style = { flexGrow = 2 } };
-            var xpLabel = new Label(team.progression.total_xp.ToString()) { style = { flexGrow = 2 } };
+            // var xpLabel = new Label(team.progression.total_xp.ToString()) { style = { flexGrow = 2 } };
 
             row.Add(rankLabel);
             row.Add(nameLabel);
             row.Add(wlLabel);
-            row.Add(xpLabel);
+            // row.Add(xpLabel);
             _bracketTable.Add(row);
         }
 
@@ -221,7 +236,8 @@ public class ProgressionUIController : MonoBehaviour
     private string PlayerTier()
     {
         var player = _seasonManager.PlayerTeam;
-        return player?.progression?.tier ?? "Rookie";
+        return ApiClient.Instance.PlayerProgressionSaveData?.current_tier ?? "Rookie";
+
     }
 
     private void ShowScreen(string screenName)

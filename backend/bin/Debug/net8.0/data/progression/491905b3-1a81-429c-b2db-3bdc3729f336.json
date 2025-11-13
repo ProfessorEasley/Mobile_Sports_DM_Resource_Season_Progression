@@ -1,0 +1,59 @@
+{
+  "player_id": "491905b3-1a81-429c-b2db-3bdc3729f336",
+  "current_xp": 70,
+  "current_tier": "pro",
+  "tier_progression": {
+    "rookie": {
+      "min_xp": 0,
+      "max_xp": 50,
+      "display_name": "Rookie",
+      "unlock_features": [
+        "Basic Arena Access",
+        "Starter Pack"
+      ]
+    },
+    "pro": {
+      "min_xp": 51,
+      "max_xp": 100,
+      "display_name": "Pro",
+      "unlock_features": [
+        "Elite Arena",
+        "Pro Training Facility"
+      ]
+    },
+    "all_star": {
+      "min_xp": 101,
+      "max_xp": 150,
+      "display_name": "All-Star",
+      "unlock_features": [
+        "Star Arena",
+        "Star Training Facility"
+      ]
+    },
+    "legend": {
+      "min_xp": 151,
+      "max_xp": 1000,
+      "display_name": "Legend",
+      "unlock_features": [
+        "Legendary Arena",
+        "Hall of Fame Access"
+      ]
+    }
+  },
+  "xp_history": [
+    {
+      "timestamp": "2025-11-04T11:37:18.5064786Z",
+      "xp_gained": 20,
+      "source": "match_loss",
+      "facility_multiplier": 1,
+      "coaching_bonus": 1
+    },
+    {
+      "timestamp": "2025-11-04T11:37:35.3182276Z",
+      "xp_gained": 50,
+      "source": "match_win",
+      "facility_multiplier": 1,
+      "coaching_bonus": 1
+    }
+  ]
+}

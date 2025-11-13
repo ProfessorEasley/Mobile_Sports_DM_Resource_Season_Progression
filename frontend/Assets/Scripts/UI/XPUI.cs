@@ -7,12 +7,12 @@ public class XPUI : MonoBehaviour
     public Transform xpListParent;
     public GameObject xpEntryPrefab;
 
-    void OnEnable() => SeasonManager.Instance.OnSeasonDataUpdated += RefreshXPHistory;
-    void OnDisable() => SeasonManager.Instance.OnSeasonDataUpdated -= RefreshXPHistory;
+    void OnEnable() => SeasonDataManager.Instance.OnSeasonDataUpdated += RefreshXPHistory;
+    void OnDisable() => SeasonDataManager.Instance.OnSeasonDataUpdated -= RefreshXPHistory;
 
     public void RefreshXPHistory()
     {
-        var sm = SeasonManager.Instance;
+        var sm = SeasonDataManager.Instance;
         currentXPText.text = $"Current XP: {sm.PlayerXP}/1000";
 
         // TODO: Clear and rebuild XP history list

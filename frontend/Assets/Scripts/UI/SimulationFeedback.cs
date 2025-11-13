@@ -18,12 +18,12 @@ public class SimulationFeedbackUI : MonoBehaviour
     public Button btnSimNextWeek;
     public Button btnBackToHub;
 
-    private SeasonManager seasonManager;
+    private SeasonDataManager seasonDataManager;
     private ScreenManager screenManager;
 
     void Start()
     {
-        seasonManager = SeasonManager.Instance;
+        seasonDataManager = SeasonDataManager.Instance;
         screenManager = FindObjectOfType<ScreenManager>();
 
         btnSimNextWeek.onClick.AddListener(OnSimulateNextWeek);
@@ -32,7 +32,7 @@ public class SimulationFeedbackUI : MonoBehaviour
 
     public void OnSimulateNextWeek()
     {
-        if (seasonManager.CurrentWeek >= 10)
+        if (seasonDataManager.CurrentWeek >= 10)
         {
             Debug.Log("Season complete!");
             return;
@@ -43,9 +43,9 @@ public class SimulationFeedbackUI : MonoBehaviour
         bool win = Random.value > 0.5f;
         int xpGained = Random.Range(50, 150);
 
-        seasonManager.NextWeek();
-        seasonManager.AddXP(xpGained);
-        seasonManager.AddXPHistory($"Week {seasonManager.CurrentWeek} {(win ? "Win" : "Loss")}", xpGained);
+        seasonDataManager.NextWeek();
+        seasonDataManager.AddXP(xpGained);
+        seasonDataManager.AddXPHistory($"Week {seasonDataManager.CurrentWeek} {(win ? "Win" : "Loss")}", xpGained);
 
         ShowSimulationResult(win, xpGained, opponent);
         screenManager.UpdateHubDisplay();
@@ -55,7 +55,7 @@ public class SimulationFeedbackUI : MonoBehaviour
 
     public void ShowSimulationResult(bool didPlayerWin, int xpGained, string opponentName)
     {
-        int currentWeek = seasonManager.CurrentWeek;
+        int currentWeek = seasonDataManager.CurrentWeek;
         titleText.text = $"MATCH SIMULATION RESULT - WEEK {currentWeek}";
         opponentText.text = $"Opponent: {opponentName}";
         resultText.text = didPlayerWin ? "Result: WIN" : "Result: LOSS";
@@ -67,10 +67,10 @@ public class SimulationFeedbackUI : MonoBehaviour
         offenseText.text = $"Offense: +{offenseBoost}%";
         defenseText.text = $"Defense: +{defenseBoost}%";
 
-        if (seasonManager.PlayerXP >= 1000)
+        if (seasonDataManager.PlayerXP >= 1000)
             rewardText.text = "Reward Progress: Bronze → Silver (Unlocked!)";
         else
-            rewardText.text = $"Reward Progress: Bronze ({seasonManager.PlayerXP}/1000)";
+            rewardText.text = $"Reward Progress: Bronze ({seasonDataManager.PlayerXP}/1000)";
     }
 
     private IEnumerator ReturnToHubAfterDelay(float delay)

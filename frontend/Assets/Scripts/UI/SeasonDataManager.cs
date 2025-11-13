@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SeasonManager : MonoBehaviour
+public class SeasonDataManager : MonoBehaviour
 {
-    public static SeasonManager Instance;
+    public static SeasonDataManager Instance;
 
     [Header("Season Data")]
     public int CurrentWeek = 1;

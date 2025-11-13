@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using System.Collections;
 
 public class SeasonManager : MonoBehaviour
 {
@@ -11,56 +12,46 @@ public class SeasonManager : MonoBehaviour
     private ApiClient apiClient;
     private ProgressionUIController uiController;
 
-    void Awake()
+    // 🔔 Event fired whenever backend data changes (UI listens to this)
+    public event Action OnSeasonDataUpdated;
+
+    private void Awake()
     {
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
         }
-        else
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
     }
 
-    void Start()
+    private void Start()
     {
         apiClient = gameObject.AddComponent<ApiClient>();
         uiController = FindObjectOfType<ProgressionUIController>();
 
+        // Create a new season from backend
         StartCoroutine(apiClient.PostCreateSeason(data =>
         {
             seasonData = data;
-            Debug.Log("Season created from API.");
+            Debug.Log("✅ Season created from API.");
 
             // Notify UI that data is ready
+            OnSeasonDataUpdated?.Invoke();
             uiController?.OnSeasonDataReady();
         }));
     }
 
-    public int CurrentWeek => seasonData?.currentWeek ?? 0;
-    public int TotalWeeks => seasonData?.totalWeeks ?? 0;
+    // --- Exposed Properties ---
+    public int CurrentWeek => seasonData?.current_week ?? 0;
+    public int TotalWeeks => seasonData?.total_weeks ?? 0;
 
     public List<TeamSaveData> Teams => seasonData?.teams ?? new List<TeamSaveData>();
     public TeamSaveData PlayerTeam => seasonData?.teams?.FirstOrDefault(t => t.is_player_team);
 
-    public void SimulateNextWeek(Action<SeasonSaveData> callback)
-    {
-        if (seasonData == null)
-        {
-            Debug.LogError("Cannot simulate week: Season data not initialized");
-            return;
-        }
-
-        StartCoroutine(apiClient.PostSimulateWeek(seasonData, data =>
-        {
-            seasonData = data;
-            callback?.Invoke(seasonData);
-        }));
-    }
-
-    public int PlayerXP => PlayerTeam?.progression?.total_xp ?? 0;
+    public int PlayerXP => ApiClient.Instance?.PlayerProgressionSaveData?.current_xp ?? 0;
 
     public int PlayerRank
     {
@@ -68,7 +59,6 @@ public class SeasonManager : MonoBehaviour
         {
             if (Teams == null || Teams.Count == 0) return 0;
 
-            // Sort by points first, then wins (as backend uses points and wins for ranking)
             var sorted = Teams.OrderByDescending(t => t.stats.points)
                               .ThenByDescending(t => t.stats.wins)
                               .ToList();
@@ -82,19 +72,45 @@ public class SeasonManager : MonoBehaviour
     {
         get
         {
-            var player = PlayerTeam;
-            if (player?.progression?.xp_history == null) return new List<string>();
+            var xpData = ApiClient.Instance?.PlayerProgressionSaveData?.xp_history;
+            if (xpData == null) return new List<string>();
 
-            List<string> history = new List<string>();
-            foreach (var entry in player.progression.xp_history)
-            {
-                string week = entry.ContainsKey("week") ? entry["week"].ToString() : "?";
-                string result = entry.ContainsKey("event") ? entry["event"].ToString() : "Unknown";
-                string xp = entry.ContainsKey("xp_change") ? entry["xp_change"].ToString() : "0";
-
-                history.Add($"Week {week} {result.ToUpper()}: +{xp} XP");
-            }
-            return history;
+            return xpData.Select(e => $"{e.timestamp}: +{e.xp_gained} XP ({e.source})").ToList();
         }
+    }
+
+    // --- API Integration ---
+    public void SimulateNextWeek(Action<SeasonSaveData> callback = null)
+    {
+        if (seasonData == null)
+        {
+            Debug.LogError("❌ Cannot simulate week: Season data not initialized");
+            return;
+        }
+
+        StartCoroutine(SimulateWeekCoroutine(callback));
+    }
+
+    private IEnumerator SimulateWeekCoroutine(Action<SeasonSaveData> callback)
+    {
+        yield return apiClient.PostSimulateWeek(seasonData, data =>
+        {
+            seasonData = data;
+            Debug.Log($"✅ Week {seasonData.current_week} simulation complete.");
+
+            // Refresh backend progression data
+            StartCoroutine(apiClient.GetPlayerProgression(PlayerTeam?.player_id, () =>
+            {
+                OnSeasonDataUpdated?.Invoke();
+                uiController?.OnSeasonDataReady();
+                callback?.Invoke(seasonData);
+            }));
+        });
+    }
+
+    public void RefreshUI()
+    {
+        OnSeasonDataUpdated?.Invoke();
+        uiController?.OnSeasonDataReady();
     }
 }

@@ -6,14 +6,15 @@ using System.Collections.Generic;
 using SimpleJSON;
 
 [Serializable]
-public class TeamStatsSaveData
+public class PlayerProgressionSaveData
 {
-    public int wins;
-    public int losses;
-    public int ties;
-    public int points;
-    public int total_matches;
+    public string player_id;
+    public int current_xp;
+    public string current_tier;
+    public Dictionary<string, TierData> tier_progression;
+    public List<XPHistoryEntry> xp_history;
 }
+
 [Serializable]
 public class TierData
 {
@@ -23,22 +24,13 @@ public class TierData
     public List<string> unlock_features;
 }
 
-// [Serializable]
-// public class TeamProgressionSaveData
-// {
-//     public int total_xp;
-//     public int current_level;
-//     public string tier;
-//     public List<Dictionary<string, object>> xp_history;
-// }
 [Serializable]
-public class PlayerProgressionSaveData
+public class TeamProgressionSaveData
 {
-    public string player_id;
-    public int current_xp;
-    public string current_tier;
-    public Dictionary<string, TierData> tier_progression;
-    public List<XPHistoryEntry> xp_history;
+    public int total_xp;
+    public int current_level;
+    public string tier;
+    public List<Dictionary<string, object>> xp_history;
 }
 
 [Serializable]
@@ -51,7 +43,6 @@ public class XPHistoryEntry
     public float coaching_bonus;
 }
 
-
 public class TeamSaveData
 {
     public string team_id;
@@ -59,31 +50,54 @@ public class TeamSaveData
     public string team_name;
     public int rating;
     public bool is_player_team;
-    public int wins;
-    public int losses;
-    public int rank
-
+    public int rank;
+    public TeamStatsSaveData stats;
+    public TeamProgressionSaveData progression;
 }
 
+[Serializable]
+public class TeamStatsSaveData
+{
+    public int wins;
+    public int losses;
+    public int points;
+    public int total_matches;
+}
 
 [Serializable]
 public class SeasonSaveData
 {
     public string season_id;
-    public int week;
+    public int current_week;
+    public int total_weeks;
     public List<TeamSaveData> teams;
     public List<PlayerProgressionSaveData> player_progression;
 }
 
 public class ApiClient : MonoBehaviour
 {
-    private readonly string baseUrl = "http://127.0.0.1:8000"; // change if hosted elsewhere
+    public static ApiClient Instance { get; private set; }
+    private readonly string baseUrl = "http://127.0.0.1:8000"; // Adjust if hosted elsewhere
 
+    public PlayerProgressionSaveData PlayerProgressionSaveData { get; private set; }
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    // --- CREATE SEASON ---
     public IEnumerator PostCreateSeason(Action<SeasonSaveData> callback)
     {
         string url = $"{baseUrl}/seasons";
 
-        // Build request JSON
         var requestJson = new JSONObject();
         var teamsArray = new JSONArray();
         string[] teamNames = { "Jets", "Hawks", "Sharks", "Bears", "Lions", "Giants", "Eagles", "YOU" };
@@ -92,7 +106,7 @@ public class ApiClient : MonoBehaviour
         {
             var teamJson = new JSONObject();
             teamJson["team_name"] = name;
-            teamJson["rating"] = 1000
+            teamJson["rating"] = 1000;
             teamsArray.Add(teamJson);
         }
 
@@ -155,13 +169,45 @@ public class ApiClient : MonoBehaviour
             }
         }
     }
+
+    public IEnumerator GetPlayerProgression(string playerId, Action onComplete = null)
+    {
+        if (string.IsNullOrEmpty(playerId))
+        {
+            Debug.LogError("❌ GetPlayerProgression failed: player_id is null or empty.");
+            yield break;
+        }
+
+        string url = $"{baseUrl}/progression/{playerId}";
+        Debug.Log($"Fetching progression for player: {playerId}");
+
+        using (UnityWebRequest www = UnityWebRequest.Get(url))
+        {
+            yield return www.SendWebRequest();
+
+            if (www.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError($"❌ GetPlayerProgression failed: {www.error}\n{www.downloadHandler.text}");
+            }
+            else
+            {
+                var json = JSONNode.Parse(www.downloadHandler.text);
+                PlayerProgressionSaveData = ParsePlayerProgression(json);
+                Debug.Log($"✅ Player progression updated: {PlayerProgressionSaveData.current_xp} XP, Tier: {PlayerProgressionSaveData.current_tier}");
+            }
+        }
+
+        onComplete?.Invoke();
+    }
+
+    // --- JSON PARSERS ---
     private SeasonSaveData ParseSeasonSaveData(JSONNode json)
     {
         SeasonSaveData data = new SeasonSaveData
         {
             season_id = json["season_id"],
-            week = json["week"].AsInt,
-
+            current_week = json["week"].AsInt,
+            total_weeks = json["total_weeks"].AsInt,
             teams = new List<TeamSaveData>()
         };
 
@@ -174,85 +220,67 @@ public class ApiClient : MonoBehaviour
                 team_name = t["team_name"],
                 rating = t["rating"].AsInt,
                 is_player_team = t["is_player_team"].AsBool,
-                rank = t["rank"].AsInt,
+                rank = 0,
                 stats = new TeamStatsSaveData
                 {
-                    wins = t["stats"]["wins"].AsInt,
-                    losses = t["stats"]["losses"].AsInt,
-                    ties = t["stats"]["ties"].AsInt,
-                    points = t["stats"]["points"].AsInt,
-                    total_matches = t["stats"]["total_matches"].AsInt
+                    wins = t["wins"].AsInt,
+                    losses = t["losses"].AsInt,
+                    points = 0,
+                    total_matches = t["wins"].AsInt + t["losses"].AsInt
                 },
                 progression = new TeamProgressionSaveData
                 {
-                    total_xp = t["progression"]["total_xp"].AsInt,
-                    current_level = t["progression"]["current_level"].AsInt,
-                    tier = t["progression"]["tier"],
+                    total_xp = 0,
+                    current_level = 0,
+                    tier = "",
                     xp_history = new List<Dictionary<string, object>>()
                 }
             };
 
-            // xp_history
-            foreach (JSONNode entry in t["progression"]["xp_history"].AsArray)
-            {
-                Dictionary<string, object> dict = new Dictionary<string, object>();
-                foreach (KeyValuePair<string, JSONNode> kv in entry.AsObject)
-                {
-                    dict[kv.Key] = kv.Value.Value; // Correct access
-                }
-                team.progression.xp_history.Add(dict);
-            }
-
             data.teams.Add(team);
         }
-        if (json["player_progression"] != null)
-        {
-            data.player_progression = new List<PlayerProgressionSaveData>();
-            foreach (JSONNode p in json["player_progression"].AsArray)
-            {
-                var prog = new PlayerProgressionSaveData
-                {
-                    player_id = p["player_id"],
-                    current_xp = p["current_xp"].AsInt,
-                    current_tier = p["current_tier"],
-                    tier_progression = new Dictionary<string, TierData>(),
-                    xp_history = new List<XPHistoryEntry>()
-                };
-
-                foreach (KeyValuePair<string, JSONNode> kv in p["tier_progression"].AsObject)
-                {
-                    var tierNode = kv.Value;
-                    prog.tier_progression[kv.Key] = new TierData
-                    {
-                        min_xp = tierNode["min_xp"].AsInt,
-                        max_xp = tierNode["max_xp"].AsInt,
-                        display_name = tierNode["display_name"],
-                        unlock_features = new List<string>()
-                    };
-                    foreach (JSONNode feat in tierNode["unlock_features"].AsArray)
-                        prog.tier_progression[kv.Key].unlock_features.Add(feat);
-                }
-
-                foreach (JSONNode entry in p["xp_history"].AsArray)
-                {
-                    XPHistoryEntry history = new XPHistoryEntry
-                    {
-                        timestamp = entry["timestamp"],
-                        xp_gained = entry["xp_gained"].AsInt,
-                        source = entry["source"],
-                        facility_multiplier = entry["facility_multiplier"].AsFloat,
-                        coaching_bonus = entry["coaching_bonus"].AsFloat
-                    };
-                    prog.xp_history.Add(history);
-                }
-
-                data.player_progression.Add(prog);
-            }
-        }
-
-
 
         return data;
     }
 
+    private PlayerProgressionSaveData ParsePlayerProgression(JSONNode p)
+    {
+        var prog = new PlayerProgressionSaveData
+        {
+            player_id = p["player_id"],
+            current_xp = p["current_xp"].AsInt,
+            current_tier = p["current_tier"],
+            tier_progression = new Dictionary<string, TierData>(),
+            xp_history = new List<XPHistoryEntry>()
+        };
+
+        foreach (KeyValuePair<string, JSONNode> kv in p["tier_progression"].AsObject)
+        {
+            var tierNode = kv.Value;
+            prog.tier_progression[kv.Key] = new TierData
+            {
+                min_xp = tierNode["min_xp"].AsInt,
+                max_xp = tierNode["max_xp"].AsInt,
+                display_name = tierNode["display_name"],
+                unlock_features = new List<string>()
+            };
+
+            foreach (JSONNode feat in tierNode["unlock_features"].AsArray)
+                prog.tier_progression[kv.Key].unlock_features.Add(feat);
+        }
+
+        foreach (JSONNode entry in p["xp_history"].AsArray)
+        {
+            prog.xp_history.Add(new XPHistoryEntry
+            {
+                timestamp = entry["timestamp"],
+                xp_gained = entry["xp_gained"].AsInt,
+                source = entry["source"],
+                facility_multiplier = entry["facility_multiplier"].AsFloat,
+                coaching_bonus = entry["coaching_bonus"].AsFloat
+            });
+        }
+
+        return prog;
+    }
 }

@@ -1,0 +1,79 @@
+{
+  "season_id": "56e5aea9-78f9-4e8b-b8b4-a646a687a0e6",
+  "teams": [
+    {
+      "team_id": "8c1e0783-9f0c-491b-8bf2-5d843d1ce656",
+      "player_id": "8e61deae-8b9c-4e1e-aba7-d4daaa739b7e",
+      "team_name": "Jets",
+      "rating": 1000,
+      "is_player_team": false,
+      "wins": 0,
+      "losses": 0
+    },
+    {
+      "team_id": "caebc6a5-dc31-4295-96a1-8fceadf756bb",
+      "player_id": "111843f9-4bb0-4623-8e32-6977c8870024",
+      "team_name": "Hawks",
+      "rating": 1000,
+      "is_player_team": false,
+      "wins": 0,
+      "losses": 0
+    },
+    {
+      "team_id": "ef6eae6f-9893-4c74-8278-8ec367c541eb",
+      "player_id": "317df2fa-ac6c-4287-aa2e-07072ee77de3",
+      "team_name": "Sharks",
+      "rating": 1000,
+      "is_player_team": false,
+      "wins": 0,
+      "losses": 0
+    },
+    {
+      "team_id": "dbae80fd-6d43-439d-b932-d8e608663f98",
+      "player_id": "e9db0b3f-4272-4871-8a02-c22839f45cf2",
+      "team_name": "Bears",
+      "rating": 1000,
+      "is_player_team": false,
+      "wins": 0,
+      "losses": 0
+    },
+    {
+      "team_id": "f463032d-0126-468c-be1c-42b93cbf64b9",
+      "player_id": "d6f2036a-4246-48f9-bfa2-8c7e53755fea",
+      "team_name": "Lions",
+      "rating": 1000,
+      "is_player_team": false,
+      "wins": 0,
+      "losses": 0
+    },
+    {
+      "team_id": "740f3826-1509-4727-b135-d31ed7fae7fc",
+      "player_id": "a40a2e55-7284-4345-bad8-0db1d0ac6404",
+      "team_name": "Giants",
+      "rating": 1000,
+      "is_player_team": false,
+      "wins": 0,
+      "losses": 0
+    },
+    {
+      "team_id": "e8cfa4b1-0bcb-4017-84e0-fb066a952250",
+      "player_id": "f130188a-e755-4126-b3b2-fd7b0237f9ad",
+      "team_name": "Eagles",
+      "rating": 1000,
+      "is_player_team": false,
+      "wins": 0,
+      "losses": 0
+    },
+    {
+      "team_id": "debd2861-5607-4104-8d53-70099297efdd",
+      "player_id": "78ca8be0-dcf6-438e-b5e8-aacf4167151d",
+      "team_name": "YOU",
+      "rating": 1000,
+      "is_player_team": true,
+      "wins": 0,
+      "losses": 0
+    }
+  ],
+  "week": 0,
+  "player_progression": []
+}

@@ -1,0 +1,108 @@
+{
+  "player_id": "b8f1bbe8-c4da-430f-8975-670282203cbd",
+  "current_xp": 330,
+  "current_tier": "legend",
+  "tier_progression": {
+    "rookie": {
+      "min_xp": 0,
+      "max_xp": 50,
+      "display_name": "Rookie",
+      "unlock_features": [
+        "Basic Arena Access",
+        "Starter Pack"
+      ]
+    },
+    "pro": {
+      "min_xp": 51,
+      "max_xp": 100,
+      "display_name": "Pro",
+      "unlock_features": [
+        "Elite Arena",
+        "Pro Training Facility"
+      ]
+    },
+    "all_star": {
+      "min_xp": 101,
+      "max_xp": 150,
+      "display_name": "All-Star",
+      "unlock_features": [
+        "Star Arena",
+        "Star Training Facility"
+      ]
+    },
+    "legend": {
+      "min_xp": 151,
+      "max_xp": 1000,
+      "display_name": "Legend",
+      "unlock_features": [
+        "Legendary Arena",
+        "Hall of Fame Access"
+      ]
+    }
+  },
+  "xp_history": [
+    {
+      "timestamp": "2025-11-05T10:03:29.7032746Z",
+      "xp_gained": 50,
+      "source": "match_win",
+      "facility_multiplier": 1,
+      "coaching_bonus": 1
+    },
+    {
+      "timestamp": "2025-11-05T10:03:30.3973040Z",
+      "xp_gained": 50,
+      "source": "match_win",
+      "facility_multiplier": 1,
+      "coaching_bonus": 1
+    },
+    {
+      "timestamp": "2025-11-05T10:03:30.7567909Z",
+      "xp_gained": 20,
+      "source": "match_loss",
+      "facility_multiplier": 1,
+      "coaching_bonus": 1
+    },
+    {
+      "timestamp": "2025-11-05T10:03:31.0208822Z",
+      "xp_gained": 20,
+      "source": "match_loss",
+      "facility_multiplier": 1,
+      "coaching_bonus": 1
+    },
+    {
+      "timestamp": "2025-11-05T10:03:31.2840875Z",
+      "xp_gained": 50,
+      "source": "match_win",
+      "facility_multiplier": 1,
+      "coaching_bonus": 1
+    },
+    {
+      "timestamp": "2025-11-05T10:03:32.8646279Z",
+      "xp_gained": 20,
+      "source": "match_loss",
+      "facility_multiplier": 1,
+      "coaching_bonus": 1
+    },
+    {
+      "timestamp": "2025-11-05T10:03:33.1082254Z",
+      "xp_gained": 50,
+      "source": "match_win",
+      "facility_multiplier": 1,
+      "coaching_bonus": 1
+    },
+    {
+      "timestamp": "2025-11-05T10:03:33.3930305Z",
+      "xp_gained": 20,
+      "source": "match_loss",
+      "facility_multiplier": 1,
+      "coaching_bonus": 1
+    },
+    {
+      "timestamp": "2025-11-05T10:03:33.6376050Z",
+      "xp_gained": 50,
+      "source": "match_win",
+      "facility_multiplier": 1,
+      "coaching_bonus": 1
+    }
+  ]
+}
