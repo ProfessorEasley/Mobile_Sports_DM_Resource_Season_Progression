@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FMGSeasonProgression")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+65e469b37e77325cb20974a7136abbe60d7706eb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f76ac87ed0df86e91d0d4319ba6a310a10f617fd")]
 [assembly: System.Reflection.AssemblyProductAttribute("FMGSeasonProgression")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FMGSeasonProgression")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

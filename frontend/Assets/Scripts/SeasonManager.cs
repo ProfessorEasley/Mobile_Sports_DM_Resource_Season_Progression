@@ -67,6 +67,38 @@ public class SeasonManager : MonoBehaviour
             return playerIndex >= 0 ? playerIndex + 1 : 0;
         }
     }
+    public string PlayerTier
+    {
+        get
+        {
+            return ApiClient.Instance?.PlayerProgressionSaveData?.current_tier ?? "rookie";
+        }
+    }
+
+    public TierData CurrentTierData
+    {
+        get
+        {
+            var prog = ApiClient.Instance?.PlayerProgressionSaveData;
+            if (prog == null || prog.tier_progression == null) return null;
+
+            if (prog.tier_progression.TryGetValue(PlayerTier, out var tierData))
+                return tierData;
+
+            return null;
+        }
+    }
+
+    public Dictionary<string, TierData> AllTiers
+    {
+        get
+        {
+            return ApiClient.Instance?.PlayerProgressionSaveData?.tier_progression 
+                ?? new Dictionary<string, TierData>();
+        }
+    }
+
+
 
     public List<string> XpHistory
     {

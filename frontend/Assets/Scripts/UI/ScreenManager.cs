@@ -15,6 +15,7 @@ public class ScreenManager : MonoBehaviour
     public TextMeshProUGUI weekText;
     public TextMeshProUGUI remainingMatchesText;
     public TextMeshProUGUI rankText; 
+    public TextMeshProUGUI tierText; 
 
 
     [Header("Optional References (if available)")]
@@ -119,7 +120,8 @@ public class ScreenManager : MonoBehaviour
             remainingMatchesText.text = $"Remaining: {remaining}";
         }
 
-
+        if (tierText != null)
+            tierText.text = $"Tier: {seasonManager.PlayerTier}";
 
         Debug.Log($"ScreenManager: Hub Updated → XP={seasonManager.PlayerXP}, Week={seasonManager.CurrentWeek}");
 
