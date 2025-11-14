@@ -96,20 +96,26 @@ public class SeasonManager : MonoBehaviour
         yield return apiClient.PostSimulateWeek(seasonData, data =>
         {
             seasonData = data;
-            Debug.Log($"✅ Week {seasonData.current_week} simulation complete.");
+            Debug.Log($"Week {seasonData.current_week} simulated.");
+        });
 
-            // Refresh backend progression data
-            StartCoroutine(apiClient.GetPlayerProgression(PlayerTeam?.player_id, () =>
-            {
-                OnSeasonDataUpdated?.Invoke();
-                uiController?.OnSeasonDataReady();
-                callback?.Invoke(seasonData);
-            }));
+        // Fetch updated XP history
+        var playerId = PlayerTeam?.player_id;
+
+        yield return apiClient.GetPlayerProgression(playerId, () =>
+        {
+            Debug.Log("Player progression updated from backend.");
+            OnSeasonDataUpdated?.Invoke();   // 🔥 this updates XPUI properly
+            uiController?.OnSeasonDataReady();
+            callback?.Invoke(seasonData);
         });
     }
 
+
     public void RefreshUI()
     {
+        Debug.Log("SeasonManager: OnSeasonDataUpdated fired");
+
         OnSeasonDataUpdated?.Invoke();
         uiController?.OnSeasonDataReady();
     }

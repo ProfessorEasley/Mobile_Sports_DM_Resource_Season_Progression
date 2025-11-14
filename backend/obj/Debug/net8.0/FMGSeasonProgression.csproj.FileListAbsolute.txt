@@ -95,3 +95,10 @@ C:\Users\mihik\OneDrive\Desktop\Mobile_Sports_DM_Resource_Season_Progression\bac
 C:\Users\mihik\OneDrive\Desktop\Mobile_Sports_DM_Resource_Season_Progression\backend\bin\Debug\net8.0\data\seasons\ea8184c5-af3b-478e-9e06-0d4274773ab0_week_7.json
 C:\Users\mihik\OneDrive\Desktop\Mobile_Sports_DM_Resource_Season_Progression\backend\bin\Debug\net8.0\data\seasons\ea8184c5-af3b-478e-9e06-0d4274773ab0_week_8.json
 C:\Users\mihik\OneDrive\Desktop\Mobile_Sports_DM_Resource_Season_Progression\backend\bin\Debug\net8.0\data\seasons\ea8184c5-af3b-478e-9e06-0d4274773ab0_week_9.json
+C:\Users\mihik\OneDrive\Desktop\Mobile_Sports_DM_Resource_Season_Progression\backend\bin\Debug\net8.0\data\seasons\4ea9b5a7-9cf7-425a-bcfb-243a8e97fb12.json
+C:\Users\mihik\OneDrive\Desktop\Mobile_Sports_DM_Resource_Season_Progression\backend\bin\Debug\net8.0\data\seasons\56c394cb-3c21-4e20-bcf7-2cfd6064e22b.json
+C:\Users\mihik\OneDrive\Desktop\Mobile_Sports_DM_Resource_Season_Progression\backend\bin\Debug\net8.0\data\seasons\9e0065d8-b2a7-4d4a-9c65-f64e0261cac8.json
+C:\Users\mihik\OneDrive\Desktop\Mobile_Sports_DM_Resource_Season_Progression\backend\bin\Debug\net8.0\data\seasons\a322350c-2642-4dd2-b597-48f7462937e8.json
+C:\Users\mihik\OneDrive\Desktop\Mobile_Sports_DM_Resource_Season_Progression\backend\bin\Debug\net8.0\data\seasons\c2df685a-de6f-45a6-a57e-06cc3390254f.json
+C:\Users\mihik\OneDrive\Desktop\Mobile_Sports_DM_Resource_Season_Progression\backend\bin\Debug\net8.0\data\seasons\d2972050-9e2f-41ce-a14f-99fbdd64a4eb.json
+C:\Users\mihik\OneDrive\Desktop\Mobile_Sports_DM_Resource_Season_Progression\backend\bin\Debug\net8.0\data\seasons\fbc84bd2-f3d3-4a4d-b68a-e33ab668591c.json

@@ -1,4 +1,7 @@
 # OS-generated files
 .DS_Store
 .vscode/
+
+
 backend/data
+backend/bin/Debug/net8.0/data/

@@ -102,3 +102,5 @@ InitTestScene*.unity*
 # OS-generated files
 .DS_Store
 .vscode/
+
+.backend/data

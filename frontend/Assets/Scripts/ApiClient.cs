@@ -138,6 +138,7 @@ public class ApiClient : MonoBehaviour
         }
     }
 
+    // --- SIMULATE WEEK ---
     public IEnumerator PostSimulateWeek(SeasonSaveData currentData, Action<SeasonSaveData> callback)
     {
         if (string.IsNullOrEmpty(currentData.season_id))

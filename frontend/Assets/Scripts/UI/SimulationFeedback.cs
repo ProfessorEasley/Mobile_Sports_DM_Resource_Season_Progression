@@ -18,64 +18,136 @@ public class SimulationFeedbackUI : MonoBehaviour
     public Button btnSimNextWeek;
     public Button btnBackToHub;
 
-    private SeasonDataManager seasonDataManager;
+    private SeasonManager seasonManager;
     private ScreenManager screenManager;
 
-    void Start()
+    void OnEnable()
     {
-        seasonDataManager = SeasonDataManager.Instance;
+        // Subscribe when SeasonManager becomes available
+        StartCoroutine(WaitForManagersAndSubscribe());
+    }
+
+    void OnDisable()
+    {
+        if (seasonManager != null)
+            seasonManager.OnSeasonDataUpdated -= OnSeasonDataUpdated;
+    }
+
+    private IEnumerator WaitForManagersAndSubscribe()
+    {
+        // find ScreenManager quickly
         screenManager = FindObjectOfType<ScreenManager>();
 
-        btnSimNextWeek.onClick.AddListener(OnSimulateNextWeek);
-        btnBackToHub.onClick.AddListener(() => screenManager.ShowHub());
+        // wait for SeasonManager singleton to be ready
+        while (SeasonManager.Instance == null)
+            yield return null;
+
+        seasonManager = SeasonManager.Instance;
+        seasonManager.OnSeasonDataUpdated += OnSeasonDataUpdated;
+
+        // wire buttons (safe to do once managers available)
+        if (btnSimNextWeek != null)
+        {
+            btnSimNextWeek.onClick.RemoveAllListeners();
+            btnSimNextWeek.onClick.AddListener(OnSimulateNextWeek);
+        }
+
+        if (btnBackToHub != null)
+        {
+            btnBackToHub.onClick.RemoveAllListeners();
+            btnBackToHub.onClick.AddListener(() => screenManager?.ShowHub());
+        }
+
+        // initial refresh
+        RefreshUsingSeasonData();
+    }
+
+    private void OnSeasonDataUpdated()
+    {
+        // called when SeasonManager got fresh data
+        RefreshUsingSeasonData();
+    }
+
+    private void RefreshUsingSeasonData()
+    {
+        if (seasonManager == null) return;
+
+        // Show some basic info — week and current XP
+        int wk = seasonManager.CurrentWeek;
+        titleText?.SetText($"MATCH SIMULATION RESULT - WEEK {wk}");
+        xpEarnedText?.SetText($"XP: {seasonManager.PlayerXP}");
+
+        // Show current tier if we have progression data
+        var prog = ApiClient.Instance?.PlayerProgressionSaveData;
+        if (prog != null)
+            rewardText?.SetText($"Tier: {prog.current_tier}");
+        else
+            rewardText?.SetText("Tier: -");
+
+        // Opponent / result are only meaningful immediately after a simulate; leave placeholders
+        opponentText?.SetText("Opponent: -");
+        resultText?.SetText("Result: -");
+        offenseText?.SetText("");
+        defenseText?.SetText("");
     }
 
     public void OnSimulateNextWeek()
     {
-        if (seasonDataManager.CurrentWeek >= 10)
+        if (seasonManager == null)
         {
-            Debug.Log("Season complete!");
+            Debug.LogWarning("SimulationFeedbackUI: SeasonManager not ready.");
             return;
         }
 
-        string[] opponents = { "Jets", "Hawks", "Lions", "Bulls", "Panthers", "Eagles" };
-        string opponent = opponents[Random.Range(0, opponents.Length)];
-        bool win = Random.value > 0.5f;
-        int xpGained = Random.Range(50, 150);
+        btnSimNextWeek.interactable = false;
 
-        seasonDataManager.NextWeek();
-        seasonDataManager.AddXP(xpGained);
-        seasonDataManager.AddXPHistory($"Week {seasonDataManager.CurrentWeek} {(win ? "Win" : "Loss")}", xpGained);
+        // Use SeasonManager to simulate — it will fetch progression and trigger OnSeasonDataUpdated
+        seasonManager.SimulateNextWeek(updatedSeason =>
+        {
+            // UI update based on freshly returned season state
+            // pick an opponent (simple find first non-player)
+            var player = seasonManager.PlayerTeam;
+            var opponent = updatedSeason.teams.Find(t => t.player_id != player?.player_id);
 
-        ShowSimulationResult(win, xpGained, opponent);
-        screenManager.UpdateHubDisplay();
+            bool playerWon = false;
+            if (opponent != null && player != null)
+            {
+                // simple heuristic: compare wins (if backend provides wins)
+                int playerWins = player.stats != null ? player.stats.wins : 0;
+                int oppWins = opponent.stats != null ? opponent.stats.wins : 0;
+                playerWon = playerWins >= oppWins;
+            }
 
-        StartCoroutine(ReturnToHubAfterDelay(1.5f));
-    }
+            // show returned data
+            titleText?.SetText($"MATCH SIMULATION RESULT - WEEK {updatedSeason.current_week}");
+            opponentText?.SetText(opponent != null ? $"Opponent: {opponent.team_name}" : "Opponent: -");
+            resultText?.SetText(playerWon ? "Result: WIN" : "Result: LOSS");
+            resultText.color = playerWon ? Color.green : Color.red;
 
-    public void ShowSimulationResult(bool didPlayerWin, int xpGained, string opponentName)
-    {
-        int currentWeek = seasonDataManager.CurrentWeek;
-        titleText.text = $"MATCH SIMULATION RESULT - WEEK {currentWeek}";
-        opponentText.text = $"Opponent: {opponentName}";
-        resultText.text = didPlayerWin ? "Result: WIN" : "Result: LOSS";
-        resultText.color = didPlayerWin ? Color.green : new Color(1f, 0.8f, 0.4f);
-        xpEarnedText.text = $"XP Earned: +{xpGained}";
+            // xp displayed from ApiClient progression (just updated)
+            var prog = ApiClient.Instance?.PlayerProgressionSaveData;
+            if (prog != null)
+                xpEarnedText?.SetText($"XP Earned: {prog.current_xp}");
+            else
+                xpEarnedText?.SetText("XP Earned: -");
 
-        int offenseBoost = Random.Range(5, 15);
-        int defenseBoost = Random.Range(3, 10);
-        offenseText.text = $"Offense: +{offenseBoost}%";
-        defenseText.text = $"Defense: +{defenseBoost}%";
+            int offenseBoost = Random.Range(5, 15);
+            int defenseBoost = Random.Range(3, 10);
+            offenseText?.SetText($"Offense: +{offenseBoost}%");
+            defenseText?.SetText($"Defense: +{defenseBoost}%");
 
-        if (seasonDataManager.PlayerXP >= 1000)
-            rewardText.text = "Reward Progress: Bronze → Silver (Unlocked!)";
-        else
-            rewardText.text = $"Reward Progress: Bronze ({seasonDataManager.PlayerXP}/1000)";
+            // update hub screen and re-enable button
+            screenManager?.UpdateHubDisplay();
+            btnSimNextWeek.interactable = true;
+
+            // optionally auto-return to hub after short delay
+            StartCoroutine(ReturnToHubAfterDelay(1.2f));
+        });
     }
 
     private IEnumerator ReturnToHubAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
-        screenManager.ShowHub();
+        screenManager?.ShowHub();
     }
 }

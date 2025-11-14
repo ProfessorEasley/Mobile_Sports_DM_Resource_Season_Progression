@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using System.Collections;
 
 public class ScreenManager : MonoBehaviour
 {
@@ -12,32 +13,46 @@ public class ScreenManager : MonoBehaviour
     [Header("Hub UI References")]
     public TextMeshProUGUI xpText;
     public TextMeshProUGUI weekText;
+    public TextMeshProUGUI remainingMatchesText;
+    public TextMeshProUGUI rankText; 
+
 
     [Header("Optional References (if available)")]
     public BracketUI bracketUI;
     public XPUI xpUI;
 
-    private SeasonDataManager seasonManager;
+    private SeasonManager seasonManager;
 
+ 
     void Awake()
     {
-        // Hook into the SeasonDataManager singleton
-        seasonManager = SeasonDataManager.Instance;
-
-        if (seasonManager == null)
-        {
-            Debug.LogError("ScreenManager: SeasonDataManager not found in scene!");
-            return;
-        }
-
-        // Whenever season data changes, update all screens
-        seasonManager.OnSeasonDataUpdated += UpdateAllScreens;
+        StartCoroutine(WaitForSeasonManager());
     }
 
+    private IEnumerator WaitForSeasonManager()
+    {
+        while (SeasonManager.Instance == null)
+            yield return null;
+
+        seasonManager = SeasonManager.Instance;
+
+        seasonManager.OnSeasonDataUpdated += UpdateAllScreens;
+
+        Debug.Log("ScreenManager: Subscribed to SeasonManager events");
+
+        UpdateAllScreens();
+    }
+
+    private void OnDestroy()
+    {
+        if (seasonManager != null)
+            seasonManager.OnSeasonDataUpdated -= UpdateAllScreens;
+    }
+
+   
     void Start()
     {
         ShowHub();
-        UpdateAllScreens();
     }
 
     public void ShowHub()
@@ -49,15 +64,13 @@ public class ScreenManager : MonoBehaviour
     public void ShowBracket()
     {
         ShowScreen(screenBracket);
-        if (bracketUI != null)
-            bracketUI.RefreshBracket();
+        bracketUI?.RefreshBracket();
     }
 
     public void ShowXP()
     {
         ShowScreen(screenXP);
-        if (xpUI != null)
-            xpUI.RefreshXPHistory();
+        xpUI?.RefreshXPHistory();
     }
 
     public void ShowSimFeedback()
@@ -67,33 +80,31 @@ public class ScreenManager : MonoBehaviour
 
     private void ShowScreen(GameObject screen)
     {
-        screenHub.SetActive(false);
-        screenBracket.SetActive(false);
-        screenXP.SetActive(false);
-        screenSimFeedback.SetActive(false);
+        if (screenHub != null) screenHub.SetActive(false);
+        if (screenBracket != null) screenBracket.SetActive(false);
+        if (screenXP != null) screenXP.SetActive(false);
+        if (screenSimFeedback != null) screenSimFeedback.SetActive(false);
 
         screen.SetActive(true);
     }
 
+
     public void UpdateAllScreens()
     {
-        if (seasonManager == null)
-            seasonManager = SeasonDataManager.Instance;
+        if (seasonManager == null) return;
+
+        Debug.Log("ScreenManager: Updating ALL screens");
 
         UpdateHubDisplay();
-
-        if (xpUI != null)
-            xpUI.RefreshXPHistory();
-
-        if (bracketUI != null)
-            bracketUI.RefreshBracket();
+        xpUI?.RefreshXPHistory();
+        bracketUI?.RefreshBracket();
     }
 
     public void UpdateHubDisplay()
     {
         if (seasonManager == null)
         {
-            Debug.LogWarning("ScreenManager: SeasonDataManager not initialized yet.");
+            Debug.LogWarning("ScreenManager: SeasonManager not initialized yet");
             return;
         }
 
@@ -102,5 +113,19 @@ public class ScreenManager : MonoBehaviour
 
         if (weekText != null)
             weekText.text = $"Week: {seasonManager.CurrentWeek}/10";
+        if (remainingMatchesText != null)
+        {
+            int remaining = 10 - seasonManager.CurrentWeek;
+            remainingMatchesText.text = $"Remaining: {remaining}";
+        }
+
+
+
+        Debug.Log($"ScreenManager: Hub Updated → XP={seasonManager.PlayerXP}, Week={seasonManager.CurrentWeek}");
+
+        if (rankText != null)
+        rankText.text = $"Rank: {seasonManager.PlayerRank} / {seasonManager.Teams.Count}";
+
+        Debug.Log($"ScreenManager: Hub Updated → XP={seasonManager.PlayerXP}, Week={seasonManager.CurrentWeek}, Rank={seasonManager.PlayerRank}");
     }
 }
