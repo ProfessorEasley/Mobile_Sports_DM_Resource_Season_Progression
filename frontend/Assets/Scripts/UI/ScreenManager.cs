@@ -1,6 +1,8 @@
 using UnityEngine;
 using TMPro;
 using System.Collections;
+using UnityEngine.UI;
+
 
 public class ScreenManager : MonoBehaviour
 {
@@ -16,6 +18,14 @@ public class ScreenManager : MonoBehaviour
     public TextMeshProUGUI remainingMatchesText;
     public TextMeshProUGUI rankText; 
     public TextMeshProUGUI tierText; 
+    public TextMeshProUGUI offenseText;
+    public TextMeshProUGUI defenseText;
+    public TextMeshProUGUI titleText;
+    public TextMeshProUGUI opponentText;
+    public TextMeshProUGUI resultText;
+    public TextMeshProUGUI xpEarnedText;
+    public TextMeshProUGUI rewardText;
+
 
 
     [Header("Optional References (if available)")]
@@ -76,7 +86,11 @@ public class ScreenManager : MonoBehaviour
 
     public void ShowSimFeedback()
     {
+
+         
+        OnSimulateNextWeek();
         ShowScreen(screenSimFeedback);
+
     }
 
     private void ShowScreen(GameObject screen)
@@ -130,4 +144,93 @@ public class ScreenManager : MonoBehaviour
 
         Debug.Log($"ScreenManager: Hub Updated → XP={seasonManager.PlayerXP}, Week={seasonManager.CurrentWeek}, Rank={seasonManager.PlayerRank}");
     }
+    public void OnSimulateNextWeek()
+{
+    Debug.Log("ScreenManager: Simulating next week...");
+    if (seasonManager == null)
+    {
+        Debug.LogWarning("SimulationFeedbackUI: SeasonManager not ready.");
+        return;
+    }
+
+    seasonManager.SimulateNextWeek(updatedSeason =>
+    {
+        
+        var player = seasonManager.PlayerTeam;
+        var opponent = updatedSeason.teams.Find(t => t.player_id != player?.player_id);
+        
+        Debug.Log($"SimulationFeedbackUI: Opponent found - {opponent?.team_name}");
+        bool playerWon = false;
+        if (opponent != null && player != null)
+        {
+            int playerWins = player.stats != null ? player.stats.wins : 0;
+            int oppWins = opponent.stats != null ? opponent.stats.wins : 0;
+            playerWon = playerWins >= oppWins;
+        }
+
+        // Generate boosts first
+        int offenseBoost = Random.Range(5, 15);
+        int defenseBoost = Random.Range(3, 10);
+
+        // Log for debugging
+        Debug.Log($"Updating SimFeedback - Opponent: {opponent?.team_name}, Won: {playerWon}, Off: {offenseBoost}, Def: {defenseBoost}");
+
+        // Add null checks for all UI elements
+        opponentText?.SetText(opponent != null ? $"Opponent: {opponent.team_name}" : "Opponent: -");
+
+        if (titleText != null)
+        {
+            titleText.SetText($"MATCH SIMULATION RESULT - WEEK {updatedSeason.current_week}");
+            Debug.Log($"Title set: {titleText.text}");
+        }
+        
+        if (opponentText != null)
+        {
+            opponentText.SetText(opponent != null ? $"Opponent: {opponent.team_name}" : "Opponent: -");
+            Debug.Log($"Opponent set: {opponentText.text}");
+        }
+        
+        if (resultText != null)
+        {
+            resultText.SetText(playerWon ? "Result: WIN" : "Result: LOSS");
+            resultText.color = playerWon ? Color.green : Color.red;
+            Debug.Log($"Result set: {resultText.text}");
+        }
+
+        // xp displayed from ApiClient progression (just updated)
+        var prog = ApiClient.Instance?.PlayerProgressionSaveData;
+        if (xpEarnedText != null)
+        {
+            if (prog != null)
+                xpEarnedText.SetText($"XP Earned: {prog.current_xp}");
+            else
+                xpEarnedText.SetText("XP Earned: -");
+            Debug.Log($"XP set: {xpEarnedText.text}");
+        }
+
+        if (offenseText != null)
+        {
+            offenseText.SetText($"Offense: +{offenseBoost}%");
+            Debug.Log($"Offense set: {offenseText.text}");
+        }
+        
+        if (defenseText != null)
+        {
+            defenseText.SetText($"Defense: +{defenseBoost}%");
+            Debug.Log($"Defense set: {defenseText.text}");
+        }
+
+        // update hub screen
+        UpdateHubDisplay();
+
+        // optionally auto-return to hub after short delay
+        // StartCoroutine(ReturnToHubAfterDelay(2.5f)); // Increased delay so user can see results
+    });
+}
+        private IEnumerator ReturnToHubAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        ShowHub();
+    }
+
 }
