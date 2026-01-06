@@ -148,7 +148,6 @@ public class ApiClient : MonoBehaviour
         }
 
         string url = $"{baseUrl}/seasons/{currentData.season_id}/simulate_week";
-        Debug.Log($"SimulateWeek URL: {url}");
 
         using (UnityWebRequest www = new UnityWebRequest(url, "POST"))
         {

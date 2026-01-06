@@ -36,7 +36,6 @@ public class SeasonManager : MonoBehaviour
         StartCoroutine(apiClient.PostCreateSeason(data =>
         {
             seasonData = data;
-            Debug.Log("✅ Season created from API.");
 
             // Notify UI that data is ready
             OnSeasonDataUpdated?.Invoke();
@@ -136,9 +135,7 @@ public class SeasonManager : MonoBehaviour
 
         yield return apiClient.GetPlayerProgression(playerId, () =>
         {
-            Debug.Log("Player progression updated from backend.");
-            OnSeasonDataUpdated?.Invoke();   // 🔥 this updates XPUI properly
-            uiController?.OnSeasonDataReady();
+            OnSeasonDataUpdated?.Invoke();  
             callback?.Invoke(seasonData);
         });
     }
@@ -146,7 +143,6 @@ public class SeasonManager : MonoBehaviour
 
     public void RefreshUI()
     {
-        Debug.Log("SeasonManager: OnSeasonDataUpdated fired");
 
         OnSeasonDataUpdated?.Invoke();
         uiController?.OnSeasonDataReady();

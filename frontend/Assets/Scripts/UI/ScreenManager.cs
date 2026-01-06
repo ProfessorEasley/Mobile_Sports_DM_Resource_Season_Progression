@@ -49,7 +49,6 @@ public class ScreenManager : MonoBehaviour
 
         seasonManager.OnSeasonDataUpdated += UpdateAllScreens;
 
-        Debug.Log("ScreenManager: Subscribed to SeasonManager events");
 
         UpdateAllScreens();
     }
@@ -108,7 +107,6 @@ public class ScreenManager : MonoBehaviour
     {
         if (seasonManager == null) return;
 
-        Debug.Log("ScreenManager: Updating ALL screens");
 
         UpdateHubDisplay();
         xpUI?.RefreshXPHistory();
@@ -123,8 +121,9 @@ public class ScreenManager : MonoBehaviour
             return;
         }
 
-        if (xpText != null)
-            xpText.text = $"XP: {seasonManager.PlayerXP}/1000";
+        var prog = ApiClient.Instance?.PlayerProgressionSaveData;
+        
+        xpText.text = $"XP: {seasonManager.PlayerXP}/1000";
 
         if (weekText != null)
             weekText.text = $"Week: {seasonManager.CurrentWeek}/10";
@@ -137,16 +136,13 @@ public class ScreenManager : MonoBehaviour
         if (tierText != null)
             tierText.text = $"Tier: {seasonManager.PlayerTier}";
 
-        Debug.Log($"ScreenManager: Hub Updated → XP={seasonManager.PlayerXP}, Week={seasonManager.CurrentWeek}");
 
         if (rankText != null)
         rankText.text = $"Rank: {seasonManager.PlayerRank} / {seasonManager.Teams.Count}";
 
-        Debug.Log($"ScreenManager: Hub Updated → XP={seasonManager.PlayerXP}, Week={seasonManager.CurrentWeek}, Rank={seasonManager.PlayerRank}");
     }
     public void OnSimulateNextWeek()
 {
-    Debug.Log("ScreenManager: Simulating next week...");
     if (seasonManager == null)
     {
         Debug.LogWarning("SimulationFeedbackUI: SeasonManager not ready.");
@@ -159,7 +155,6 @@ public class ScreenManager : MonoBehaviour
         var player = seasonManager.PlayerTeam;
         var opponent = updatedSeason.teams.Find(t => t.player_id != player?.player_id);
         
-        Debug.Log($"SimulationFeedbackUI: Opponent found - {opponent?.team_name}");
         bool playerWon = false;
         if (opponent != null && player != null)
         {
@@ -172,8 +167,6 @@ public class ScreenManager : MonoBehaviour
         int offenseBoost = Random.Range(5, 15);
         int defenseBoost = Random.Range(3, 10);
 
-        // Log for debugging
-        Debug.Log($"Updating SimFeedback - Opponent: {opponent?.team_name}, Won: {playerWon}, Off: {offenseBoost}, Def: {defenseBoost}");
 
         // Add null checks for all UI elements
         opponentText?.SetText(opponent != null ? $"Opponent: {opponent.team_name}" : "Opponent: -");
@@ -181,43 +174,44 @@ public class ScreenManager : MonoBehaviour
         if (titleText != null)
         {
             titleText.SetText($"MATCH SIMULATION RESULT - WEEK {updatedSeason.current_week}");
-            Debug.Log($"Title set: {titleText.text}");
         }
         
         if (opponentText != null)
         {
             opponentText.SetText(opponent != null ? $"Opponent: {opponent.team_name}" : "Opponent: -");
-            Debug.Log($"Opponent set: {opponentText.text}");
         }
         
         if (resultText != null)
         {
             resultText.SetText(playerWon ? "Result: WIN" : "Result: LOSS");
             resultText.color = playerWon ? Color.green : Color.red;
-            Debug.Log($"Result set: {resultText.text}");
         }
 
-        // xp displayed from ApiClient progression (just updated)
         var prog = ApiClient.Instance?.PlayerProgressionSaveData;
+        int xp_earned = 0;
+        if (prog.xp_history != null)
+        {
+            foreach (var entry in prog.xp_history)
+            {
+                xp_earned = entry.xp_gained; // Assuming XPHistoryEntry has xp_gained field
+            }
+        }
         if (xpEarnedText != null)
         {
             if (prog != null)
-                xpEarnedText.SetText($"XP Earned: {prog.current_xp}");
+                xpEarnedText.SetText($"XP Gained: {xp_earned}");
             else
-                xpEarnedText.SetText("XP Earned: -");
-            Debug.Log($"XP set: {xpEarnedText.text}");
+                xpEarnedText.SetText("XP Gained: -");
         }
 
         if (offenseText != null)
         {
             offenseText.SetText($"Offense: +{offenseBoost}%");
-            Debug.Log($"Offense set: {offenseText.text}");
         }
         
         if (defenseText != null)
         {
             defenseText.SetText($"Defense: +{defenseBoost}%");
-            Debug.Log($"Defense set: {defenseText.text}");
         }
 
         // update hub screen

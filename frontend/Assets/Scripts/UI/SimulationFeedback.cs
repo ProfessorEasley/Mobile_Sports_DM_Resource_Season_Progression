@@ -68,11 +68,19 @@ public class SimulationFeedbackUI : MonoBehaviour
 
         // Show some basic info — week and current XP
         int wk = seasonManager.CurrentWeek;
-        titleText?.SetText($"MATCH SIMULATION RESULT - WEEK {wk}");
-        xpEarnedText?.SetText($"XP: {seasonManager.PlayerXP}");
-        Debug.Log($"SimulationFeedbackUI: Refreshing for Week {wk}, XP {seasonManager}");
-        // Show current tier if we have progression data
         var prog = ApiClient.Instance?.PlayerProgressionSaveData;
+        int xp_earned = 0;
+        if (prog.xp_history != null)
+        {
+            foreach (var entry in prog.xp_history)
+            {
+                xp_earned = entry.xp_gained; // Assuming XPHistoryEntry has xp_gained field
+            }
+        }
+       
+        titleText?.SetText($"MATCH SIMULATION RESULT - WEEK {wk}");
+        xpEarnedText?.SetText($"XP Gained: {xp_earned}");
+        // Show current tier if we have progression data
         if (prog != null)
             rewardText?.SetText($"Tier: {prog.current_tier}");
         else
@@ -116,11 +124,18 @@ public class SimulationFeedbackUI : MonoBehaviour
 
             // xp displayed from ApiClient progression (just updated)
             var prog = ApiClient.Instance?.PlayerProgressionSaveData;
+            int xp_earned = 0;
+            if (prog.xp_history != null)
+            {
+                foreach (var entry in prog.xp_history)
+                {
+                    xp_earned = entry.xp_gained; // Assuming XPHistoryEntry has xp_gained field
+                }
+            }
             if (prog != null)
-                xpEarnedText?.SetText($"XP Earned: {prog.current_xp}");
+                xpEarnedText?.SetText($"XP Gained: {xp_earned}");
             else
-                xpEarnedText?.SetText("XP Earned: -");
-
+                xpEarnedText?.SetText("XP Gained: -");
             int offenseBoost = Random.Range(5, 15);
             int defenseBoost = Random.Range(3, 10);
             offenseText?.SetText($"Offense: +{offenseBoost}%");

@@ -50,6 +50,5 @@ public class BracketUI : MonoBehaviour
             rank++;
         }
 
-        Debug.Log("BracketUI: Standings updated.");
     }
 }
