@@ -33,34 +33,28 @@ public class SimulationFeedbackUI : MonoBehaviour
             seasonManager.OnSeasonDataUpdated -= OnSeasonDataUpdated;
     }
 
-    private IEnumerator WaitForManagersAndSubscribe()
+ private IEnumerator WaitForManagersAndSubscribe()
+{
+    // find ScreenManager quickly
+    screenManager = FindObjectOfType<ScreenManager>();
+
+    // wait for SeasonManager singleton to be ready
+    while (SeasonManager.Instance == null)
+        yield return null;
+
+    seasonManager = SeasonManager.Instance;
+    seasonManager.OnSeasonDataUpdated += OnSeasonDataUpdated;
+
+  
+    if (btnBackToHub != null)
     {
-        // find ScreenManager quickly
-        screenManager = FindObjectOfType<ScreenManager>();
-
-        // wait for SeasonManager singleton to be ready
-        while (SeasonManager.Instance == null)
-            yield return null;
-
-        seasonManager = SeasonManager.Instance;
-        seasonManager.OnSeasonDataUpdated += OnSeasonDataUpdated;
-
-        // wire buttons (safe to do once managers available)
-        if (btnSimNextWeek != null)
-        {
-            btnSimNextWeek.onClick.RemoveAllListeners();
-            btnSimNextWeek.onClick.AddListener(OnSimulateNextWeek);
-        }
-
-        if (btnBackToHub != null)
-        {
-            btnBackToHub.onClick.RemoveAllListeners();
-            btnBackToHub.onClick.AddListener(() => screenManager?.ShowHub());
-        }
-
-        // initial refresh
-        RefreshUsingSeasonData();
+        btnBackToHub.onClick.RemoveAllListeners();
+        btnBackToHub.onClick.AddListener(() => screenManager?.ShowHub());
     }
+
+    // initial refresh
+    RefreshUsingSeasonData();
+}
 
     private void OnSeasonDataUpdated()
     {
@@ -84,11 +78,7 @@ public class SimulationFeedbackUI : MonoBehaviour
         else
             rewardText?.SetText("Tier: -");
 
-        // Opponent / result are only meaningful immediately after a simulate; leave placeholders
-        // opponentText?.SetText("Opponent: sire");
-        // resultText?.SetText("Result: -");
-        // offenseText?.SetText("");
-        // defenseText?.SetText("");
+
     }
 
     public void OnSimulateNextWeek()
