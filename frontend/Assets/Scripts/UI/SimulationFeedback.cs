@@ -76,7 +76,7 @@ public class SimulationFeedbackUI : MonoBehaviour
         int wk = seasonManager.CurrentWeek;
         titleText?.SetText($"MATCH SIMULATION RESULT - WEEK {wk}");
         xpEarnedText?.SetText($"XP: {seasonManager.PlayerXP}");
-
+        Debug.Log($"SimulationFeedbackUI: Refreshing for Week {wk}, XP {seasonManager}");
         // Show current tier if we have progression data
         var prog = ApiClient.Instance?.PlayerProgressionSaveData;
         if (prog != null)
@@ -85,10 +85,10 @@ public class SimulationFeedbackUI : MonoBehaviour
             rewardText?.SetText("Tier: -");
 
         // Opponent / result are only meaningful immediately after a simulate; leave placeholders
-        opponentText?.SetText("Opponent: -");
-        resultText?.SetText("Result: -");
-        offenseText?.SetText("");
-        defenseText?.SetText("");
+        // opponentText?.SetText("Opponent: sire");
+        // resultText?.SetText("Result: -");
+        // offenseText?.SetText("");
+        // defenseText?.SetText("");
     }
 
     public void OnSimulateNextWeek()
