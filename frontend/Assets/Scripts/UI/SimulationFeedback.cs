@@ -70,7 +70,7 @@ public class SimulationFeedbackUI : MonoBehaviour
         int wk = seasonManager.CurrentWeek;
         var prog = ApiClient.Instance?.PlayerProgressionSaveData;
         int xp_earned = 0;
-        if (prog.xp_history != null)
+        if (prog != null && prog.xp_history != null)
         {
             foreach (var entry in prog.xp_history)
             {

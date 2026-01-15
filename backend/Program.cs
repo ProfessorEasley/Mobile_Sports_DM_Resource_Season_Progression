@@ -100,11 +100,38 @@ app.MapPost("/seasons/{id}/simulate_week", (string id) =>
     if (!active_seasons.TryGetValue(id, out var ctrl))
         return Results.NotFound($"Season {id} not found.");
 
-    ctrl.SimulateWeek();
+    // --- NEW: Add this Lock Block ---
+    lock (ctrl)
+    {
+        // Optional: specific check to stop double-simulation if needed
+        // if (ctrl.state.week >= target_week) return Results.Json(ctrl.state);
 
-    var json = JsonSerializer.Serialize(ctrl.state, jsonOptions);
-    File.WriteAllText($"data/seasons/{id}_week_{ctrl.state.week}.json", json);
+        ctrl.SimulateWeek();
 
+        // Safe to write now because only one thread can be here at a time
+        var json = JsonSerializer.Serialize(ctrl.state, jsonOptions);
+        
+        // We use the specific week number in the filename
+        string filePath = $"data/seasons/{id}_week_{ctrl.state.week}.json";
+        
+        // Simple retry logic in case OneDrive is momentarily locking the file
+        int retries = 3;
+        while (retries > 0)
+        {
+            try 
+            {
+                File.WriteAllText(filePath, json);
+                break; // Success
+            }
+            catch (IOException) 
+            {
+                retries--;
+                System.Threading.Thread.Sleep(50); // Wait 50ms and try again
+                if (retries == 0) throw; // If it still fails, crash
+            }
+        }
+    }
+    // --------------------------------
 
     return Results.Json(ctrl.state);
 });
